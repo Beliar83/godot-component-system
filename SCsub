@@ -1,0 +1,94 @@
+import time
+
+Import('env')
+import os
+import subprocess
+
+cxx_files = [
+    'godot/variant.rs',
+    'godot/string_name.rs',
+    'component.rs',
+]
+
+command = 'cargo build --manifest-path=./Cargo.toml'
+
+print('Checking for installed cxxbridge')
+try:
+    process = subprocess.run('cxxbridge -V')
+except FileNotFoundError as e:
+    print(e)
+    print('godot-component-system: installing cxxbridge')
+    process = subprocess.run('cargo install cxxbridge-cmd', shell=True)
+    process.check_returncode()
+
+libpath = './target'
+
+if env['platform'] == 'javascript':
+    libpath += '/wasm32-unknown-emscripten'
+    command += ' --target=wasm32-unknown-emscripten'
+
+if env['target'].startswith('release'):
+    command = command + ' --release'
+    target = 'release'
+    libpath += '/release'
+else:
+    libpath += '/debug'
+    target = 'debug'
+
+emcc_rurst_env = {
+    **os.environ,
+    "EMCC_CFLAGS": str.join(' ', env['CXXFLAGS']),
+}
+
+print('godot-component-system: Compiling rust library')
+process = subprocess.run(command, shell=True, env=emcc_rurst_env)
+process.check_returncode()
+
+print('godot-component-system: Creating cxx bridge directories')
+os.makedirs('cxxbridge/include', exist_ok=True)
+os.makedirs('cxxbridge/src', exist_ok=True)
+time.sleep(1)
+
+src_list = ['register_types.cpp',
+            'src/object.cpp',
+            'src/variant.cpp',
+            'src/string_name.cpp',
+            'src/string.cpp'
+            ]
+
+old_path = os.getcwd()
+os.chdir('src')
+for file in cxx_files:
+    print('godot-component-system: Creating cxx bridge for ' + file)
+    process = subprocess.run('cxxbridge --header ' + file, capture_output=True, shell=True)
+    process.check_returncode()
+
+    basename = os.path.basename(file)
+
+    with open('../cxxbridge/include/' + basename + '.h', 'wb') as header_file:
+        header_file.write(process.stdout)
+
+    process = subprocess.run('cxxbridge ' + file, capture_output=True, shell=True)
+    process.check_returncode()
+    src_path = '../cxxbridge/src/' + basename + '.cpp'
+    with open(src_path, 'wb') as source_file:
+        source_file.write(process.stdout)
+    src_list.append(os.path.abspath(src_path))
+os.chdir(old_path)
+
+env_godot_component_system = env.Clone()
+libsuffix = env['LIBSUFFIX']
+
+env_godot_component_system.add_source_files(env.modules_sources, src_list)
+env_godot_component_system.Append(CPPPATH=['include'])
+env_godot_component_system.Append(CPPPATH=['target/cxxbridge'])
+env_godot_component_system.Append(CPPPATH=['cxxbridge/include'])
+
+if env.msvc:
+    env.Append(LIBS=[File(libpath + '/godot_component_system.lib')])
+    env.Append(LINKFLAGS=['userenv.lib'])
+else:
+    env.Append(LIBPATH=[os.path.abspath(libpath)])
+    env.Append(LIBS=['godot_component_system'])
+    if env['platform'] == 'windows':
+        env.Append(LIBS=['userenv'])

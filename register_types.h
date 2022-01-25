@@ -1,0 +1,2 @@
+void register_godot_component_system_types();
+void unregister_godot_component_system_types();
