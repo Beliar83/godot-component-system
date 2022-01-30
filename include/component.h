@@ -1,5 +1,5 @@
-#ifndef GODOT_COMPONENT_SYSTEM_OBJECT_H
-#define GODOT_COMPONENT_SYSTEM_OBJECT_H
+#ifndef GODOT_COMPONENT_SYSTEM_COMPONENT_H
+#define GODOT_COMPONENT_SYSTEM_COMPONENT_H
 #include <vector>
 #include "core/reference.h"
 #include "cxx.h"
@@ -12,9 +12,9 @@ class GodotComponent : public Reference {
 
 public:
     rust::Vec<ComponentFieldDefinition> get_fields() const;
-    void set_field(const StringName& name, const Variant &value);
+    void set_field(const rust::string& name, const Variant &value);
 
-    std::unique_ptr<Variant> get_field(const StringName& name) const;
+    std::unique_ptr<Variant> get_field(const rust::string& name) const;
     void print_definition() const;
 
 

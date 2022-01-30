@@ -6,7 +6,6 @@ import subprocess
 
 cxx_files = [
     'godot/variant.rs',
-    'godot/string_name.rs',
     'component.rs',
 ]
 
@@ -50,10 +49,9 @@ os.makedirs('cxxbridge/src', exist_ok=True)
 time.sleep(1)
 
 src_list = ['register_types.cpp',
-            'src/object.cpp',
+            'src/component.cpp',
             'src/variant.cpp',
-            'src/string_name.cpp',
-            'src/string.cpp'
+            'src/string.cpp',
             ]
 
 old_path = os.getcwd()

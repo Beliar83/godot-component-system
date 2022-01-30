@@ -1,5 +1,4 @@
-use crate::component::ffi::{string_name_from_rust_string, GodotComponent};
-use crate::godot::string_name::ffi::StringName;
+use crate::component::ffi::GodotComponent;
 use crate::godot::variant::ffi::Variant;
 use crate::godot::variant::ffi::VariantType;
 use cxx::{SharedPtr, UniquePtr};
@@ -21,24 +20,15 @@ pub mod ffi {
     }
 
     unsafe extern "C++" {
-        include!("object.h");
-        include!("string_name.h");
+        include!("component.h");
         include!("cxx.h");
-        type StringName = crate::godot::string_name::ffi::StringName;
         pub type Variant = crate::godot::variant::ffi::Variant;
         type VariantType = crate::godot::variant::ffi::VariantType;
 
         pub type GodotComponent;
         pub fn get_fields(self: &GodotComponent) -> Vec<ComponentFieldDefinition>;
-        pub fn set_field(self: Pin<&mut GodotComponent>, name: &StringName, value: &Variant);
-        pub fn get_field(self: &GodotComponent, name: &StringName) -> UniquePtr<Variant>;
-        pub fn string_name_from_rust_string(string: String) -> &'static StringName;
-    }
-}
-
-impl Into<&StringName> for String {
-    fn into(self) -> &'static StringName {
-        string_name_from_rust_string(self)
+        pub fn set_field(self: Pin<&mut GodotComponent>, name: &String, value: &Variant);
+        pub fn get_field(self: &GodotComponent, name: &String) -> UniquePtr<Variant>;
     }
 }
 
@@ -54,20 +44,20 @@ impl Component for ffi::GodotComponent {
         self.get_fields()
     }
 
-    fn set_field(&mut self, name: &StringName, value: &ffi::Variant) {
+    fn set_field(&mut self, name: String, value: &ffi::Variant) {
         let component: Pin<&mut GodotComponent> = unsafe { Pin::new_unchecked(self) };
-        component.set_field(name, value);
+        component.set_field(&name, value);
     }
 
-    fn get_field(&self, name: &StringName) -> UniquePtr<ffi::Variant> {
-        self.get_field(name)
+    fn get_field(&self, name: String) -> UniquePtr<ffi::Variant> {
+        self.get_field(&name)
     }
 }
 
 pub trait Component {
     fn get_fields(&self) -> Vec<ffi::ComponentFieldDefinition>;
-    fn set_field(&mut self, name: &StringName, value: &Variant);
-    fn get_field(&self, name: &StringName) -> UniquePtr<Variant>;
+    fn set_field(&mut self, name: String, value: &Variant);
+    fn get_field(&self, name: String) -> UniquePtr<Variant>;
 }
 
 fn print_definition_gd(component: &ffi::GodotComponent) {

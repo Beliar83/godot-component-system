@@ -3,7 +3,7 @@
 #include "core/script_language.h"
 #include "godot/string.h" // NOLINT(modernize-deprecated-headers)
 #include "component.rs.h"
-#include "object.h"
+#include "component.h"
 
 rust::Vec<ComponentFieldDefinition> GodotComponent::get_fields() const {
     List<PropertyInfo> list;
@@ -22,12 +22,12 @@ rust::Vec<ComponentFieldDefinition> GodotComponent::get_fields() const {
     return *field_vec;
 }
 
-void GodotComponent::set_field(const StringName& name, const Variant &value) {
-    this->set(name, value);
+void GodotComponent::set_field(const rust::string& name, const Variant &value) {
+    this->set(string_name_from_rust_string(name), value);
 }
 
-std::unique_ptr<Variant> GodotComponent::get_field(const StringName& name) const {
-    return std::make_unique<Variant>(this->get(name));
+std::unique_ptr<Variant> GodotComponent::get_field(const rust::string& name) const {
+    return std::make_unique<Variant>(this->get(string_name_from_rust_string(name)));
 }
 
 void GodotComponent::print_definition() const {

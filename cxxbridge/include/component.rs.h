@@ -1,6 +1,5 @@
 #pragma once
-#include "object.h"
-#include "string_name.h"
+#include "component.h"
 #include "cxx.h"
 #include <algorithm>
 #include <array>

@@ -1,5 +1,4 @@
-#include "object.h"
-#include "string_name.h"
+#include "component.h"
 #include "cxx.h"
 #include <algorithm>
 #include <array>
@@ -403,11 +402,6 @@ struct unsafe_bitcopy_t final {
 };
 #endif // CXXBRIDGE1_RUST_BITCOPY_T
 
-#ifndef CXXBRIDGE1_RUST_BITCOPY
-#define CXXBRIDGE1_RUST_BITCOPY
-constexpr unsafe_bitcopy_t unsafe_bitcopy{};
-#endif // CXXBRIDGE1_RUST_BITCOPY
-
 #ifndef CXXBRIDGE1_RUST_VEC
 #define CXXBRIDGE1_RUST_VEC
 template <typename T>
@@ -807,19 +801,14 @@ void cxxbridge1$GodotComponent$get_fields(const ::GodotComponent &self, ::rust::
   new (return$) ::rust::Vec<::ComponentFieldDefinition>((self.*get_fields$)());
 }
 
-void cxxbridge1$GodotComponent$set_field(::GodotComponent &self, const ::StringName &name, const ::Variant &value) noexcept {
-  void (::GodotComponent::*set_field$)(const ::StringName &, const ::Variant &) = &::GodotComponent::set_field;
+void cxxbridge1$GodotComponent$set_field(::GodotComponent &self, const ::rust::String &name, const ::Variant &value) noexcept {
+  void (::GodotComponent::*set_field$)(const ::rust::String &, const ::Variant &) = &::GodotComponent::set_field;
   (self.*set_field$)(name, value);
 }
 
-::Variant *cxxbridge1$GodotComponent$get_field(const ::GodotComponent &self, const ::StringName &name) noexcept {
-  ::std::unique_ptr<::Variant> (::GodotComponent::*get_field$)(const ::StringName &) const = &::GodotComponent::get_field;
+::Variant *cxxbridge1$GodotComponent$get_field(const ::GodotComponent &self, const ::rust::String &name) noexcept {
+  ::std::unique_ptr<::Variant> (::GodotComponent::*get_field$)(const ::rust::String &) const = &::GodotComponent::get_field;
   return (self.*get_field$)(name).release();
-}
-
-const ::StringName *cxxbridge1$string_name_from_rust_string(const ::rust::String *string) noexcept {
-  const ::StringName &(*string_name_from_rust_string$)(::rust::String) = ::string_name_from_rust_string;
-  return &string_name_from_rust_string$(::rust::String(::rust::unsafe_bitcopy, *string));
 }
 } // extern "C"
 
