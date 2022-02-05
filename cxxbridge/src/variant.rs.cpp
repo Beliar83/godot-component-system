@@ -1,13 +1,10 @@
 #include "../../include/variant.h"
 #include "cxx.h"
 #include <array>
-#include <cstddef>
 #include <cstdint>
-#include <memory>
 #include <new>
 #include <string>
 #include <type_traits>
-#include <utility>
 
 namespace rust {
 inline namespace cxxbridge1 {
@@ -82,18 +79,6 @@ private:
 };
 #endif // CXXBRIDGE1_RUST_STRING
 
-#ifndef CXXBRIDGE1_IS_COMPLETE
-#define CXXBRIDGE1_IS_COMPLETE
-namespace detail {
-namespace {
-template <typename T, typename = std::size_t>
-struct is_complete : std::false_type {};
-template <typename T>
-struct is_complete<T, decltype(sizeof(T))> : std::true_type {};
-} // namespace
-} // namespace detail
-#endif // CXXBRIDGE1_IS_COMPLETE
-
 #ifndef CXXBRIDGE1_RELOCATABLE
 #define CXXBRIDGE1_RELOCATABLE
 namespace detail {
@@ -130,16 +115,6 @@ struct IsRelocatable
               bool, std::is_trivially_move_constructible<T>::value &&
                         std::is_trivially_destructible<T>::value>>::type {};
 #endif // CXXBRIDGE1_RELOCATABLE
-
-namespace {
-template <bool> struct deleter_if {
-  template <typename T> void operator()(T *) {}
-};
-
-template <> struct deleter_if<true> {
-  template <typename T> void operator()(T *ptr) { ptr->~T(); }
-};
-} // namespace
 } // namespace cxxbridge1
 } // namespace rust
 
@@ -153,11 +128,6 @@ extern "C" {
 void cxxbridge1$Variant$get_type(const ::Variant &self, ::VariantType *return$) noexcept {
   ::VariantType (::Variant::*get_type$)() const = &::Variant::get_type;
   new (return$) ::VariantType((self.*get_type$)());
-}
-
-void cxxbridge1$yes_cxx_variant_can_be_a_unique_ptr_target(::Variant *variant) noexcept {
-  void (*yes_cxx_variant_can_be_a_unique_ptr_target$)(::std::unique_ptr<::Variant>) = ::yes_cxx_variant_can_be_a_unique_ptr_target;
-  yes_cxx_variant_can_be_a_unique_ptr_target$(::std::unique_ptr<::Variant>(variant));
 }
 
 ::std::int64_t cxxbridge1$variant_as_i64(const ::Variant &variant) noexcept {
@@ -178,24 +148,5 @@ bool cxxbridge1$variant_as_bool(const ::Variant &variant) noexcept {
 double cxxbridge1$variant_as_f64(const ::Variant &variant) noexcept {
   double (*variant_as_f64$)(const ::Variant &) = ::variant_as_f64;
   return variant_as_f64$(variant);
-}
-
-static_assert(::rust::detail::is_complete<::Variant>::value, "definition of Variant is required");
-static_assert(sizeof(::std::unique_ptr<::Variant>) == sizeof(void *), "");
-static_assert(alignof(::std::unique_ptr<::Variant>) == alignof(void *), "");
-void cxxbridge1$unique_ptr$Variant$null(::std::unique_ptr<::Variant> *ptr) noexcept {
-  ::new (ptr) ::std::unique_ptr<::Variant>();
-}
-void cxxbridge1$unique_ptr$Variant$raw(::std::unique_ptr<::Variant> *ptr, ::Variant *raw) noexcept {
-  ::new (ptr) ::std::unique_ptr<::Variant>(raw);
-}
-const ::Variant *cxxbridge1$unique_ptr$Variant$get(const ::std::unique_ptr<::Variant>& ptr) noexcept {
-  return ptr.get();
-}
-::Variant *cxxbridge1$unique_ptr$Variant$release(::std::unique_ptr<::Variant>& ptr) noexcept {
-  return ptr.release();
-}
-void cxxbridge1$unique_ptr$Variant$drop(::std::unique_ptr<::Variant> *ptr) noexcept {
-  ::rust::deleter_if<::rust::detail::is_complete<::Variant>::value>{}(ptr);
 }
 } // extern "C"

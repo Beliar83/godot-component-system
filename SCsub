@@ -7,6 +7,7 @@ import subprocess
 cxx_files = [
     'godot/variant.rs',
     'component.rs',
+    'ecs_world.rs'
 ]
 
 command = 'cargo build --manifest-path=./Cargo.toml'
@@ -34,13 +35,13 @@ else:
     libpath += '/debug'
     target = 'debug'
 
-emcc_rurst_env = {
+emcc_rust_env = {
     **os.environ,
     "EMCC_CFLAGS": str.join(' ', env['CXXFLAGS']),
 }
 
 print('godot-component-system: Compiling rust library')
-process = subprocess.run(command, shell=True, env=emcc_rurst_env)
+process = subprocess.run(command, shell=True, env=emcc_rust_env)
 process.check_returncode()
 
 print('godot-component-system: Creating cxx bridge directories')
@@ -50,15 +51,15 @@ time.sleep(1)
 
 src_list = ['register_types.cpp',
             'src/component.cpp',
-            'src/variant.cpp',
-            'src/string.cpp',
+            'src/godot/variant.cpp',
+            'src/godot/string.cpp',
             ]
 
 old_path = os.getcwd()
 os.chdir('src')
 for file in cxx_files:
     print('godot-component-system: Creating cxx bridge for ' + file)
-    process = subprocess.run('cxxbridge --header ' + file, capture_output=True, shell=True)
+    process = subprocess.run('cxxbridge --cfg test=false --header ' + file, capture_output=True, shell=True)
     process.check_returncode()
 
     basename = os.path.basename(file)
@@ -66,7 +67,7 @@ for file in cxx_files:
     with open('../cxxbridge/include/' + basename + '.h', 'wb') as header_file:
         header_file.write(process.stdout)
 
-    process = subprocess.run('cxxbridge ' + file, capture_output=True, shell=True)
+    process = subprocess.run('cxxbridge --cfg test=false ' + file, capture_output=True, shell=True)
     process.check_returncode()
     src_path = '../cxxbridge/src/' + basename + '.cpp'
     with open(src_path, 'wb') as source_file:

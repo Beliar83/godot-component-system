@@ -1,27 +1,35 @@
 @startuml
 'https://plantuml.com/class-diagram
 
-Variant.Type <--* Variant
-String <--o ComponentFieldDefinition
-Variant.Type <--o ComponentFieldDefinition
+VariantType <--o ComponentFieldDefinition
 ComponentFieldDefinition <--* Component
+Component <--* World
+ComponentType <--* ComponentInfo
+ComponentInfo <--* World
 
-class String
-
-class Variant {
-}
-enum Variant.Type
+enum VariantType
 
 class ComponentFieldDefinition {
     String name
-    Variant.Type type
+    VariantType type
 }
 
-interface Component {
-    Vec<ComponentFieldDefinition> get_fields()
-    void set_field(String name, Variant value)
+class Component {
+    set_field(String name, Variant value)
     Variant get_field(String name)
 }
 
+class ComponentInfo {
+    hash: u64
+}
+
+class World {
+    component_definitions: HashMap<ComponentInfo, Vec<ComponentFieldDefinition>>
+    component_names: HashMap<String, ComponentInfo>
+    entities: Vec<uuid>
+    components: HashMap<String, Vec<Box<dyn Component>>>
+
+    register_component(&mut self, name: String, fields: Vec<ComponentFieldDefinition>) -> Result<ComponentInfo, String>
+}
 
 @enduml

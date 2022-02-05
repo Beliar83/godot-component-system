@@ -1,15 +1,10 @@
 #include "component.h"
 #include "cxx.h"
-#include <algorithm>
 #include <array>
-#include <cassert>
 #include <cstddef>
 #include <cstdint>
-#include <initializer_list>
-#include <iterator>
-#include <memory>
+#include <functional>
 #include <new>
-#include <stdexcept>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -18,25 +13,7 @@ namespace rust {
 inline namespace cxxbridge1 {
 // #include "rust/cxx.h"
 
-#ifndef CXXBRIDGE1_PANIC
-#define CXXBRIDGE1_PANIC
-template <typename Exception>
-void panic [[noreturn]] (const char *msg);
-#endif // CXXBRIDGE1_PANIC
-
 struct unsafe_bitcopy_t;
-
-namespace {
-template <typename T>
-class impl;
-} // namespace
-
-class Opaque;
-
-template <typename T>
-::std::size_t size_of();
-template <typename T>
-::std::size_t align_of();
 
 #ifndef CXXBRIDGE1_RUST_STRING
 #define CXXBRIDGE1_RUST_STRING
@@ -105,296 +82,6 @@ private:
 };
 #endif // CXXBRIDGE1_RUST_STRING
 
-#ifndef CXXBRIDGE1_RUST_SLICE
-#define CXXBRIDGE1_RUST_SLICE
-namespace detail {
-template <bool>
-struct copy_assignable_if {};
-
-template <>
-struct copy_assignable_if<false> {
-  copy_assignable_if() noexcept = default;
-  copy_assignable_if(const copy_assignable_if &) noexcept = default;
-  copy_assignable_if &operator=(const copy_assignable_if &) &noexcept = delete;
-  copy_assignable_if &operator=(copy_assignable_if &&) &noexcept = default;
-};
-} // namespace detail
-
-template <typename T>
-class Slice final
-    : private detail::copy_assignable_if<std::is_const<T>::value> {
-public:
-  using value_type = T;
-
-  Slice() noexcept;
-  Slice(T *, std::size_t count) noexcept;
-
-  Slice &operator=(const Slice<T> &) &noexcept = default;
-  Slice &operator=(Slice<T> &&) &noexcept = default;
-
-  T *data() const noexcept;
-  std::size_t size() const noexcept;
-  std::size_t length() const noexcept;
-  bool empty() const noexcept;
-
-  T &operator[](std::size_t n) const noexcept;
-  T &at(std::size_t n) const;
-  T &front() const noexcept;
-  T &back() const noexcept;
-
-  Slice(const Slice<T> &) noexcept = default;
-  ~Slice() noexcept = default;
-
-  class iterator;
-  iterator begin() const noexcept;
-  iterator end() const noexcept;
-
-  void swap(Slice &) noexcept;
-
-private:
-  class uninit;
-  Slice(uninit) noexcept;
-  friend impl<Slice>;
-  friend void sliceInit(void *, const void *, std::size_t) noexcept;
-  friend void *slicePtr(const void *) noexcept;
-  friend std::size_t sliceLen(const void *) noexcept;
-
-  std::array<std::uintptr_t, 2> repr;
-};
-
-template <typename T>
-class Slice<T>::iterator final {
-public:
-  using iterator_category = std::random_access_iterator_tag;
-  using value_type = T;
-  using difference_type = std::ptrdiff_t;
-  using pointer = typename std::add_pointer<T>::type;
-  using reference = typename std::add_lvalue_reference<T>::type;
-
-  reference operator*() const noexcept;
-  pointer operator->() const noexcept;
-  reference operator[](difference_type) const noexcept;
-
-  iterator &operator++() noexcept;
-  iterator operator++(int) noexcept;
-  iterator &operator--() noexcept;
-  iterator operator--(int) noexcept;
-
-  iterator &operator+=(difference_type) noexcept;
-  iterator &operator-=(difference_type) noexcept;
-  iterator operator+(difference_type) const noexcept;
-  iterator operator-(difference_type) const noexcept;
-  difference_type operator-(const iterator &) const noexcept;
-
-  bool operator==(const iterator &) const noexcept;
-  bool operator!=(const iterator &) const noexcept;
-  bool operator<(const iterator &) const noexcept;
-  bool operator<=(const iterator &) const noexcept;
-  bool operator>(const iterator &) const noexcept;
-  bool operator>=(const iterator &) const noexcept;
-
-private:
-  friend class Slice;
-  void *pos;
-  std::size_t stride;
-};
-
-template <typename T>
-Slice<T>::Slice() noexcept {
-  sliceInit(this, reinterpret_cast<void *>(align_of<T>()), 0);
-}
-
-template <typename T>
-Slice<T>::Slice(T *s, std::size_t count) noexcept {
-  assert(s != nullptr || count == 0);
-  sliceInit(this,
-            s == nullptr && count == 0
-                ? reinterpret_cast<void *>(align_of<T>())
-                : const_cast<typename std::remove_const<T>::type *>(s),
-            count);
-}
-
-template <typename T>
-T *Slice<T>::data() const noexcept {
-  return reinterpret_cast<T *>(slicePtr(this));
-}
-
-template <typename T>
-std::size_t Slice<T>::size() const noexcept {
-  return sliceLen(this);
-}
-
-template <typename T>
-std::size_t Slice<T>::length() const noexcept {
-  return this->size();
-}
-
-template <typename T>
-bool Slice<T>::empty() const noexcept {
-  return this->size() == 0;
-}
-
-template <typename T>
-T &Slice<T>::operator[](std::size_t n) const noexcept {
-  assert(n < this->size());
-  auto ptr = static_cast<char *>(slicePtr(this)) + size_of<T>() * n;
-  return *reinterpret_cast<T *>(ptr);
-}
-
-template <typename T>
-T &Slice<T>::at(std::size_t n) const {
-  if (n >= this->size()) {
-    panic<std::out_of_range>("rust::Slice index out of range");
-  }
-  return (*this)[n];
-}
-
-template <typename T>
-T &Slice<T>::front() const noexcept {
-  assert(!this->empty());
-  return (*this)[0];
-}
-
-template <typename T>
-T &Slice<T>::back() const noexcept {
-  assert(!this->empty());
-  return (*this)[this->size() - 1];
-}
-
-template <typename T>
-typename Slice<T>::iterator::reference
-Slice<T>::iterator::operator*() const noexcept {
-  return *static_cast<T *>(this->pos);
-}
-
-template <typename T>
-typename Slice<T>::iterator::pointer
-Slice<T>::iterator::operator->() const noexcept {
-  return static_cast<T *>(this->pos);
-}
-
-template <typename T>
-typename Slice<T>::iterator::reference Slice<T>::iterator::operator[](
-    typename Slice<T>::iterator::difference_type n) const noexcept {
-  auto ptr = static_cast<char *>(this->pos) + this->stride * n;
-  return *reinterpret_cast<T *>(ptr);
-}
-
-template <typename T>
-typename Slice<T>::iterator &Slice<T>::iterator::operator++() noexcept {
-  this->pos = static_cast<char *>(this->pos) + this->stride;
-  return *this;
-}
-
-template <typename T>
-typename Slice<T>::iterator Slice<T>::iterator::operator++(int) noexcept {
-  auto ret = iterator(*this);
-  this->pos = static_cast<char *>(this->pos) + this->stride;
-  return ret;
-}
-
-template <typename T>
-typename Slice<T>::iterator &Slice<T>::iterator::operator--() noexcept {
-  this->pos = static_cast<char *>(this->pos) - this->stride;
-  return *this;
-}
-
-template <typename T>
-typename Slice<T>::iterator Slice<T>::iterator::operator--(int) noexcept {
-  auto ret = iterator(*this);
-  this->pos = static_cast<char *>(this->pos) - this->stride;
-  return ret;
-}
-
-template <typename T>
-typename Slice<T>::iterator &Slice<T>::iterator::operator+=(
-    typename Slice<T>::iterator::difference_type n) noexcept {
-  this->pos = static_cast<char *>(this->pos) + this->stride * n;
-  return *this;
-}
-
-template <typename T>
-typename Slice<T>::iterator &Slice<T>::iterator::operator-=(
-    typename Slice<T>::iterator::difference_type n) noexcept {
-  this->pos = static_cast<char *>(this->pos) - this->stride * n;
-  return *this;
-}
-
-template <typename T>
-typename Slice<T>::iterator Slice<T>::iterator::operator+(
-    typename Slice<T>::iterator::difference_type n) const noexcept {
-  auto ret = iterator(*this);
-  ret.pos = static_cast<char *>(this->pos) + this->stride * n;
-  return ret;
-}
-
-template <typename T>
-typename Slice<T>::iterator Slice<T>::iterator::operator-(
-    typename Slice<T>::iterator::difference_type n) const noexcept {
-  auto ret = iterator(*this);
-  ret.pos = static_cast<char *>(this->pos) - this->stride * n;
-  return ret;
-}
-
-template <typename T>
-typename Slice<T>::iterator::difference_type
-Slice<T>::iterator::operator-(const iterator &other) const noexcept {
-  auto diff = std::distance(static_cast<char *>(other.pos),
-                            static_cast<char *>(this->pos));
-  return diff / this->stride;
-}
-
-template <typename T>
-bool Slice<T>::iterator::operator==(const iterator &other) const noexcept {
-  return this->pos == other.pos;
-}
-
-template <typename T>
-bool Slice<T>::iterator::operator!=(const iterator &other) const noexcept {
-  return this->pos != other.pos;
-}
-
-template <typename T>
-bool Slice<T>::iterator::operator<(const iterator &other) const noexcept {
-  return this->pos < other.pos;
-}
-
-template <typename T>
-bool Slice<T>::iterator::operator<=(const iterator &other) const noexcept {
-  return this->pos <= other.pos;
-}
-
-template <typename T>
-bool Slice<T>::iterator::operator>(const iterator &other) const noexcept {
-  return this->pos > other.pos;
-}
-
-template <typename T>
-bool Slice<T>::iterator::operator>=(const iterator &other) const noexcept {
-  return this->pos >= other.pos;
-}
-
-template <typename T>
-typename Slice<T>::iterator Slice<T>::begin() const noexcept {
-  iterator it;
-  it.pos = slicePtr(this);
-  it.stride = size_of<T>();
-  return it;
-}
-
-template <typename T>
-typename Slice<T>::iterator Slice<T>::end() const noexcept {
-  iterator it = this->begin();
-  it.pos = static_cast<char *>(it.pos) + it.stride * this->size();
-  return it;
-}
-
-template <typename T>
-void Slice<T>::swap(Slice &rhs) noexcept {
-  std::swap(*this, rhs);
-}
-#endif // CXXBRIDGE1_RUST_SLICE
-
 #ifndef CXXBRIDGE1_RUST_BITCOPY_T
 #define CXXBRIDGE1_RUST_BITCOPY_T
 struct unsafe_bitcopy_t final {
@@ -402,243 +89,20 @@ struct unsafe_bitcopy_t final {
 };
 #endif // CXXBRIDGE1_RUST_BITCOPY_T
 
-#ifndef CXXBRIDGE1_RUST_VEC
-#define CXXBRIDGE1_RUST_VEC
-template <typename T>
-class Vec final {
+#ifndef CXXBRIDGE1_RUST_BITCOPY
+#define CXXBRIDGE1_RUST_BITCOPY
+constexpr unsafe_bitcopy_t unsafe_bitcopy{};
+#endif // CXXBRIDGE1_RUST_BITCOPY
+
+#ifndef CXXBRIDGE1_RUST_OPAQUE
+#define CXXBRIDGE1_RUST_OPAQUE
+class Opaque {
 public:
-  using value_type = T;
-
-  Vec() noexcept;
-  Vec(std::initializer_list<T>);
-  Vec(const Vec &);
-  Vec(Vec &&) noexcept;
-  ~Vec() noexcept;
-
-  Vec &operator=(Vec &&) &noexcept;
-  Vec &operator=(const Vec &) &;
-
-  std::size_t size() const noexcept;
-  bool empty() const noexcept;
-  const T *data() const noexcept;
-  T *data() noexcept;
-  std::size_t capacity() const noexcept;
-
-  const T &operator[](std::size_t n) const noexcept;
-  const T &at(std::size_t n) const;
-  const T &front() const noexcept;
-  const T &back() const noexcept;
-
-  T &operator[](std::size_t n) noexcept;
-  T &at(std::size_t n);
-  T &front() noexcept;
-  T &back() noexcept;
-
-  void reserve(std::size_t new_cap);
-  void push_back(const T &value);
-  void push_back(T &&value);
-  template <typename... Args>
-  void emplace_back(Args &&...args);
-  void truncate(std::size_t len);
-  void clear();
-
-  using iterator = typename Slice<T>::iterator;
-  iterator begin() noexcept;
-  iterator end() noexcept;
-
-  using const_iterator = typename Slice<const T>::iterator;
-  const_iterator begin() const noexcept;
-  const_iterator end() const noexcept;
-  const_iterator cbegin() const noexcept;
-  const_iterator cend() const noexcept;
-
-  void swap(Vec &) noexcept;
-
-  Vec(unsafe_bitcopy_t, const Vec &) noexcept;
-
-private:
-  void reserve_total(std::size_t new_cap) noexcept;
-  void set_len(std::size_t len) noexcept;
-  void drop() noexcept;
-
-  friend void swap(Vec &lhs, Vec &rhs) noexcept { lhs.swap(rhs); }
-
-  std::array<std::uintptr_t, 3> repr;
+  Opaque() = delete;
+  Opaque(const Opaque &) = delete;
+  ~Opaque() = delete;
 };
-
-template <typename T>
-Vec<T>::Vec(std::initializer_list<T> init) : Vec{} {
-  this->reserve_total(init.size());
-  std::move(init.begin(), init.end(), std::back_inserter(*this));
-}
-
-template <typename T>
-Vec<T>::Vec(const Vec &other) : Vec() {
-  this->reserve_total(other.size());
-  std::copy(other.begin(), other.end(), std::back_inserter(*this));
-}
-
-template <typename T>
-Vec<T>::Vec(Vec &&other) noexcept : repr(other.repr) {
-  new (&other) Vec();
-}
-
-template <typename T>
-Vec<T>::~Vec() noexcept {
-  this->drop();
-}
-
-template <typename T>
-Vec<T> &Vec<T>::operator=(Vec &&other) &noexcept {
-  this->drop();
-  this->repr = other.repr;
-  new (&other) Vec();
-  return *this;
-}
-
-template <typename T>
-Vec<T> &Vec<T>::operator=(const Vec &other) & {
-  if (this != &other) {
-    this->drop();
-    new (this) Vec(other);
-  }
-  return *this;
-}
-
-template <typename T>
-bool Vec<T>::empty() const noexcept {
-  return this->size() == 0;
-}
-
-template <typename T>
-T *Vec<T>::data() noexcept {
-  return const_cast<T *>(const_cast<const Vec<T> *>(this)->data());
-}
-
-template <typename T>
-const T &Vec<T>::operator[](std::size_t n) const noexcept {
-  assert(n < this->size());
-  auto data = reinterpret_cast<const char *>(this->data());
-  return *reinterpret_cast<const T *>(data + n * size_of<T>());
-}
-
-template <typename T>
-const T &Vec<T>::at(std::size_t n) const {
-  if (n >= this->size()) {
-    panic<std::out_of_range>("rust::Vec index out of range");
-  }
-  return (*this)[n];
-}
-
-template <typename T>
-const T &Vec<T>::front() const noexcept {
-  assert(!this->empty());
-  return (*this)[0];
-}
-
-template <typename T>
-const T &Vec<T>::back() const noexcept {
-  assert(!this->empty());
-  return (*this)[this->size() - 1];
-}
-
-template <typename T>
-T &Vec<T>::operator[](std::size_t n) noexcept {
-  assert(n < this->size());
-  auto data = reinterpret_cast<char *>(this->data());
-  return *reinterpret_cast<T *>(data + n * size_of<T>());
-}
-
-template <typename T>
-T &Vec<T>::at(std::size_t n) {
-  if (n >= this->size()) {
-    panic<std::out_of_range>("rust::Vec index out of range");
-  }
-  return (*this)[n];
-}
-
-template <typename T>
-T &Vec<T>::front() noexcept {
-  assert(!this->empty());
-  return (*this)[0];
-}
-
-template <typename T>
-T &Vec<T>::back() noexcept {
-  assert(!this->empty());
-  return (*this)[this->size() - 1];
-}
-
-template <typename T>
-void Vec<T>::reserve(std::size_t new_cap) {
-  this->reserve_total(new_cap);
-}
-
-template <typename T>
-void Vec<T>::push_back(const T &value) {
-  this->emplace_back(value);
-}
-
-template <typename T>
-void Vec<T>::push_back(T &&value) {
-  this->emplace_back(std::move(value));
-}
-
-template <typename T>
-template <typename... Args>
-void Vec<T>::emplace_back(Args &&...args) {
-  auto size = this->size();
-  this->reserve_total(size + 1);
-  ::new (reinterpret_cast<T *>(reinterpret_cast<char *>(this->data()) +
-                               size * size_of<T>()))
-      T(std::forward<Args>(args)...);
-  this->set_len(size + 1);
-}
-
-template <typename T>
-void Vec<T>::clear() {
-  this->truncate(0);
-}
-
-template <typename T>
-typename Vec<T>::iterator Vec<T>::begin() noexcept {
-  return Slice<T>(this->data(), this->size()).begin();
-}
-
-template <typename T>
-typename Vec<T>::iterator Vec<T>::end() noexcept {
-  return Slice<T>(this->data(), this->size()).end();
-}
-
-template <typename T>
-typename Vec<T>::const_iterator Vec<T>::begin() const noexcept {
-  return this->cbegin();
-}
-
-template <typename T>
-typename Vec<T>::const_iterator Vec<T>::end() const noexcept {
-  return this->cend();
-}
-
-template <typename T>
-typename Vec<T>::const_iterator Vec<T>::cbegin() const noexcept {
-  return Slice<const T>(this->data(), this->size()).begin();
-}
-
-template <typename T>
-typename Vec<T>::const_iterator Vec<T>::cend() const noexcept {
-  return Slice<const T>(this->data(), this->size()).end();
-}
-
-template <typename T>
-void Vec<T>::swap(Vec &rhs) noexcept {
-  using std::swap;
-  swap(this->repr, rhs.repr);
-}
-
-template <typename T>
-Vec<T>::Vec(unsafe_bitcopy_t, const Vec &bits) noexcept : repr(bits.repr) {}
-#endif // CXXBRIDGE1_RUST_VEC
+#endif // CXXBRIDGE1_RUST_OPAQUE
 
 #ifndef CXXBRIDGE1_IS_COMPLETE
 #define CXXBRIDGE1_IS_COMPLETE
@@ -775,7 +239,8 @@ union MaybeUninit {
 } // namespace rust
 
 struct ComponentFieldDefinition;
-using GodotComponent = ::GodotComponent;
+struct ComponentData;
+struct ComponentValue;
 
 #ifndef CXXBRIDGE1_STRUCT_ComponentFieldDefinition
 #define CXXBRIDGE1_STRUCT_ComponentFieldDefinition
@@ -783,110 +248,135 @@ struct ComponentFieldDefinition final {
   ::rust::String name;
   ::VariantType field_type;
 
+  bool operator==(const ComponentFieldDefinition &) const noexcept;
+  bool operator!=(const ComponentFieldDefinition &) const noexcept;
   using IsRelocatable = ::std::true_type;
 };
 #endif // CXXBRIDGE1_STRUCT_ComponentFieldDefinition
+
+#ifndef CXXBRIDGE1_STRUCT_ComponentData
+#define CXXBRIDGE1_STRUCT_ComponentData
+struct ComponentData final : public ::rust::Opaque {
+  const ::ComponentValue &get_field(::rust::String field) const noexcept;
+  void set_field(::rust::String field, const ::ComponentValue &value) noexcept;
+  ~ComponentData() = delete;
+
+private:
+  friend ::rust::layout;
+  struct layout {
+    static ::std::size_t size() noexcept;
+    static ::std::size_t align() noexcept;
+  };
+};
+#endif // CXXBRIDGE1_STRUCT_ComponentData
+
+#ifndef CXXBRIDGE1_STRUCT_ComponentValue
+#define CXXBRIDGE1_STRUCT_ComponentValue
+struct ComponentValue final : public ::rust::Opaque {
+  ~ComponentValue() = delete;
+
+private:
+  friend ::rust::layout;
+  struct layout {
+    static ::std::size_t size() noexcept;
+    static ::std::size_t align() noexcept;
+  };
+};
+#endif // CXXBRIDGE1_STRUCT_ComponentValue
 
 static_assert(
     ::rust::IsRelocatable<::VariantType>::value,
     "type VariantType should be trivially move constructible and trivially destructible in C++ to be used as a field of `ComponentFieldDefinition` or argument of `create_component_field_definition` in Rust");
 
 extern "C" {
-void cxxbridge1$create_component_field_definition(::rust::String *name, ::VariantType *field_type, ::std::shared_ptr<::ComponentFieldDefinition> *return$) noexcept;
+bool cxxbridge1$ComponentFieldDefinition$operator$eq(const ComponentFieldDefinition &, const ComponentFieldDefinition &) noexcept;
+::std::size_t cxxbridge1$ComponentFieldDefinition$operator$hash(const ComponentFieldDefinition &) noexcept;
 
-void cxxbridge1$print_definition_gd(const ::GodotComponent &component) noexcept;
+void cxxbridge1$create_component_field_definition(::rust::String *name, ::VariantType *field_type, ::ComponentFieldDefinition *return$) noexcept;
+::std::size_t cxxbridge1$ComponentData$operator$sizeof() noexcept;
+::std::size_t cxxbridge1$ComponentData$operator$alignof() noexcept;
+::std::size_t cxxbridge1$ComponentValue$operator$sizeof() noexcept;
+::std::size_t cxxbridge1$ComponentValue$operator$alignof() noexcept;
 
-void cxxbridge1$GodotComponent$get_fields(const ::GodotComponent &self, ::rust::Vec<::ComponentFieldDefinition> *return$) noexcept {
-  ::rust::Vec<::ComponentFieldDefinition> (::GodotComponent::*get_fields$)() const = &::GodotComponent::get_fields;
-  new (return$) ::rust::Vec<::ComponentFieldDefinition>((self.*get_fields$)());
+const ::ComponentValue *cxxbridge1$ComponentData$get_field(const ::ComponentData &self, ::rust::String *field) noexcept;
+
+void cxxbridge1$ComponentData$set_field(::ComponentData &self, ::rust::String *field, const ::ComponentValue &value) noexcept;
+
+const ::Variant *cxxbridge1$variant_from_component_value(const ::ComponentValue &value) noexcept;
+
+const ::Variant *cxxbridge1$empty_variant() noexcept {
+  const ::Variant &(*empty_variant$)() = ::empty_variant;
+  return &empty_variant$();
 }
 
-void cxxbridge1$GodotComponent$set_field(::GodotComponent &self, const ::rust::String &name, const ::Variant &value) noexcept {
-  void (::GodotComponent::*set_field$)(const ::rust::String &, const ::Variant &) = &::GodotComponent::set_field;
-  (self.*set_field$)(name, value);
+const ::Variant *cxxbridge1$variant_from_i64(::std::int64_t value) noexcept {
+  const ::Variant &(*variant_from_i64$)(::std::int64_t) = ::variant_from_i64;
+  return &variant_from_i64$(value);
 }
 
-::Variant *cxxbridge1$GodotComponent$get_field(const ::GodotComponent &self, const ::rust::String &name) noexcept {
-  ::std::unique_ptr<::Variant> (::GodotComponent::*get_field$)(const ::rust::String &) const = &::GodotComponent::get_field;
-  return (self.*get_field$)(name).release();
+const ::Variant *cxxbridge1$variant_from_string(const ::rust::String *value) noexcept {
+  const ::Variant &(*variant_from_string$)(::rust::String) = ::variant_from_string;
+  return &variant_from_string$(::rust::String(::rust::unsafe_bitcopy, *value));
+}
+
+const ::Variant *cxxbridge1$variant_from_bool(bool value) noexcept {
+  const ::Variant &(*variant_from_bool$)(bool) = ::variant_from_bool;
+  return &variant_from_bool$(value);
+}
+
+const ::Variant *cxxbridge1$variant_from_f64(double value) noexcept {
+  const ::Variant &(*variant_from_f64$)(double) = ::variant_from_f64;
+  return &variant_from_f64$(value);
 }
 } // extern "C"
 
-::std::shared_ptr<::ComponentFieldDefinition> create_component_field_definition(::rust::String name, ::VariantType field_type) noexcept {
+namespace std {
+template <> struct hash<::ComponentFieldDefinition> {
+  ::std::size_t operator()(const ::ComponentFieldDefinition &self) const noexcept {
+    return ::cxxbridge1$ComponentFieldDefinition$operator$hash(self);
+  }
+};
+} // namespace std
+
+bool ComponentFieldDefinition::operator==(const ComponentFieldDefinition &rhs) const noexcept {
+  return cxxbridge1$ComponentFieldDefinition$operator$eq(*this, rhs);
+}
+
+bool ComponentFieldDefinition::operator!=(const ComponentFieldDefinition &rhs) const noexcept {
+  return !(*this == rhs);
+}
+
+::ComponentFieldDefinition create_component_field_definition(::rust::String name, ::VariantType field_type) noexcept {
   ::rust::ManuallyDrop<::VariantType> field_type$(::std::move(field_type));
-  ::rust::MaybeUninit<::std::shared_ptr<::ComponentFieldDefinition>> return$;
+  ::rust::MaybeUninit<::ComponentFieldDefinition> return$;
   cxxbridge1$create_component_field_definition(&name, &field_type$.value, &return$.value);
   return ::std::move(return$.value);
 }
 
-void print_definition_gd(const ::GodotComponent &component) noexcept {
-  cxxbridge1$print_definition_gd(component);
+::std::size_t ComponentData::layout::size() noexcept {
+  return cxxbridge1$ComponentData$operator$sizeof();
 }
 
-extern "C" {
-static_assert(sizeof(::std::shared_ptr<::ComponentFieldDefinition>) == 2 * sizeof(void *), "");
-static_assert(alignof(::std::shared_ptr<::ComponentFieldDefinition>) == alignof(void *), "");
-void cxxbridge1$shared_ptr$ComponentFieldDefinition$null(::std::shared_ptr<::ComponentFieldDefinition> *ptr) noexcept {
-  ::new (ptr) ::std::shared_ptr<::ComponentFieldDefinition>();
-}
-::ComponentFieldDefinition *cxxbridge1$shared_ptr$ComponentFieldDefinition$uninit(::std::shared_ptr<::ComponentFieldDefinition> *ptr) noexcept {
-  ::ComponentFieldDefinition *uninit = reinterpret_cast<::ComponentFieldDefinition *>(new ::rust::MaybeUninit<::ComponentFieldDefinition>);
-  ::new (ptr) ::std::shared_ptr<::ComponentFieldDefinition>(uninit);
-  return uninit;
-}
-void cxxbridge1$shared_ptr$ComponentFieldDefinition$clone(const ::std::shared_ptr<::ComponentFieldDefinition>& self, ::std::shared_ptr<::ComponentFieldDefinition> *ptr) noexcept {
-  ::new (ptr) ::std::shared_ptr<::ComponentFieldDefinition>(self);
-}
-const ::ComponentFieldDefinition *cxxbridge1$shared_ptr$ComponentFieldDefinition$get(const ::std::shared_ptr<::ComponentFieldDefinition>& self) noexcept {
-  return self.get();
-}
-void cxxbridge1$shared_ptr$ComponentFieldDefinition$drop(::std::shared_ptr<::ComponentFieldDefinition> *self) noexcept {
-  self->~shared_ptr();
+::std::size_t ComponentData::layout::align() noexcept {
+  return cxxbridge1$ComponentData$operator$alignof();
 }
 
-void cxxbridge1$rust_vec$ComponentFieldDefinition$new(const ::rust::Vec<::ComponentFieldDefinition> *ptr) noexcept;
-void cxxbridge1$rust_vec$ComponentFieldDefinition$drop(::rust::Vec<::ComponentFieldDefinition> *ptr) noexcept;
-::std::size_t cxxbridge1$rust_vec$ComponentFieldDefinition$len(const ::rust::Vec<::ComponentFieldDefinition> *ptr) noexcept;
-::std::size_t cxxbridge1$rust_vec$ComponentFieldDefinition$capacity(const ::rust::Vec<::ComponentFieldDefinition> *ptr) noexcept;
-const ::ComponentFieldDefinition *cxxbridge1$rust_vec$ComponentFieldDefinition$data(const ::rust::Vec<::ComponentFieldDefinition> *ptr) noexcept;
-void cxxbridge1$rust_vec$ComponentFieldDefinition$reserve_total(::rust::Vec<::ComponentFieldDefinition> *ptr, ::std::size_t new_cap) noexcept;
-void cxxbridge1$rust_vec$ComponentFieldDefinition$set_len(::rust::Vec<::ComponentFieldDefinition> *ptr, ::std::size_t len) noexcept;
-void cxxbridge1$rust_vec$ComponentFieldDefinition$truncate(::rust::Vec<::ComponentFieldDefinition> *ptr, ::std::size_t len) noexcept;
-} // extern "C"
+::std::size_t ComponentValue::layout::size() noexcept {
+  return cxxbridge1$ComponentValue$operator$sizeof();
+}
 
-namespace rust {
-inline namespace cxxbridge1 {
-template <>
-Vec<::ComponentFieldDefinition>::Vec() noexcept {
-  cxxbridge1$rust_vec$ComponentFieldDefinition$new(this);
+::std::size_t ComponentValue::layout::align() noexcept {
+  return cxxbridge1$ComponentValue$operator$alignof();
 }
-template <>
-void Vec<::ComponentFieldDefinition>::drop() noexcept {
-  return cxxbridge1$rust_vec$ComponentFieldDefinition$drop(this);
+
+const ::ComponentValue &ComponentData::get_field(::rust::String field) const noexcept {
+  return *cxxbridge1$ComponentData$get_field(*this, &field);
 }
-template <>
-::std::size_t Vec<::ComponentFieldDefinition>::size() const noexcept {
-  return cxxbridge1$rust_vec$ComponentFieldDefinition$len(this);
+
+void ComponentData::set_field(::rust::String field, const ::ComponentValue &value) noexcept {
+  cxxbridge1$ComponentData$set_field(*this, &field, value);
 }
-template <>
-::std::size_t Vec<::ComponentFieldDefinition>::capacity() const noexcept {
-  return cxxbridge1$rust_vec$ComponentFieldDefinition$capacity(this);
+
+const ::Variant &variant_from_component_value(const ::ComponentValue &value) noexcept {
+  return *cxxbridge1$variant_from_component_value(value);
 }
-template <>
-const ::ComponentFieldDefinition *Vec<::ComponentFieldDefinition>::data() const noexcept {
-  return cxxbridge1$rust_vec$ComponentFieldDefinition$data(this);
-}
-template <>
-void Vec<::ComponentFieldDefinition>::reserve_total(::std::size_t new_cap) noexcept {
-  return cxxbridge1$rust_vec$ComponentFieldDefinition$reserve_total(this, new_cap);
-}
-template <>
-void Vec<::ComponentFieldDefinition>::set_len(::std::size_t len) noexcept {
-  return cxxbridge1$rust_vec$ComponentFieldDefinition$set_len(this, len);
-}
-template <>
-void Vec<::ComponentFieldDefinition>::truncate(::std::size_t len) {
-  return cxxbridge1$rust_vec$ComponentFieldDefinition$truncate(this, len);
-}
-} // namespace cxxbridge1
-} // namespace rust

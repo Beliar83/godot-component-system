@@ -3,7 +3,6 @@
 #include "cxx.h"
 #include <array>
 #include <cstdint>
-#include <memory>
 #include <string>
 
 namespace rust {

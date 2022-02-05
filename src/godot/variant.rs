@@ -1,7 +1,9 @@
 use crate::godot::variant::ffi::Variant;
 use cxx::{type_id, ExternType};
 
-#[derive(Copy, Clone)]
+#[allow(non_camel_case_types)]
+#[allow(clippy::upper_case_acronyms)]
+#[derive(Copy, Clone, Hash, Eq, PartialEq, Debug)]
 pub enum VariantType {
     NIL,
     // atomic types
@@ -55,7 +57,6 @@ pub mod ffi {
         pub type VariantType = crate::godot::variant::VariantType;
 
         pub fn get_type(self: &Variant) -> VariantType;
-        pub fn yes_cxx_variant_can_be_a_unique_ptr_target(variant: UniquePtr<Variant>);
 
         pub fn variant_as_i64(variant: &Variant) -> i64;
         pub fn variant_as_string(variant: &Variant) -> String;
@@ -66,24 +67,24 @@ pub mod ffi {
 
 impl From<&ffi::Variant> for i64 {
     fn from(variant: &Variant) -> Self {
-        ffi::variant_as_i64(&variant)
+        ffi::variant_as_i64(variant)
     }
 }
 
 impl From<&ffi::Variant> for String {
     fn from(variant: &Variant) -> Self {
-        ffi::variant_as_string(&variant)
+        ffi::variant_as_string(variant)
     }
 }
 
 impl From<&ffi::Variant> for bool {
     fn from(variant: &Variant) -> Self {
-        ffi::variant_as_bool(&variant)
+        ffi::variant_as_bool(variant)
     }
 }
 
 impl From<&ffi::Variant> for f64 {
     fn from(variant: &Variant) -> Self {
-        ffi::variant_as_f64(&variant)
+        ffi::variant_as_f64(variant)
     }
 }

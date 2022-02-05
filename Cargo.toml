@@ -9,3 +9,4 @@ crate-type = ["staticlib"]
 
 [dependencies]
 cxx = "1.0"
+uuid = {version = "0.8", features=["serde", "v4"]}

@@ -1,8 +1,6 @@
 #include "variant.h"
 #include "godot/string.h" // NOLINT(modernize-deprecated-headers)
 
-void yes_cxx_variant_can_be_a_unique_ptr_target(std::unique_ptr<Variant> variant) {}
-
 int64_t variant_as_i64(const Variant &variant) {
     return variant.operator int64_t();
 }
@@ -18,4 +16,22 @@ bool variant_as_bool(const Variant &variant) {
 
 double variant_as_f64(const Variant &variant) {
     return variant.operator double();
+}
+
+const Variant& empty_variant() {
+    return *(new Variant());
+}
+
+const Variant& variant_from_i64(int64_t value) {
+    return *(new Variant(value));
+}
+const Variant& variant_from_string(rust::string value) {
+    return *(new Variant(string_name_from_rust_string(value)));
+}
+
+const Variant& variant_from_bool(bool value) {
+    return *(new Variant(value));
+}
+const Variant& variant_from_f64(double value) {
+    return *(new Variant(value));
 }

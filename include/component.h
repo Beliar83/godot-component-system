@@ -11,14 +11,13 @@ class GodotComponent : public Reference {
     GDCLASS(GodotComponent, Reference);
 
 public:
-    rust::Vec<ComponentFieldDefinition> get_fields() const;
     void set_field(const rust::string& name, const Variant &value);
 
     std::unique_ptr<Variant> get_field(const rust::string& name) const;
-    void print_definition() const;
-
 
 protected:
     static void _bind_methods();
 };
+
+
 #endif
