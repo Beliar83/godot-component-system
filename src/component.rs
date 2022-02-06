@@ -49,21 +49,6 @@ pub struct ComponentData {
     fields: HashMap<String, ComponentValue>,
 }
 
-#[derive(Clone)]
-pub enum ComponentValue {
-    Nil,
-    Int(i64),
-    String(String),
-    Bool(bool),
-    Real(f64),
-}
-
-impl Default for ComponentValue {
-    fn default() -> Self {
-        ComponentValue::Nil
-    }
-}
-
 impl ComponentData {
     pub fn new(entity: Uuid) -> Self {
         Self {
@@ -86,6 +71,21 @@ impl ComponentData {
 
     pub fn set_field(&mut self, field: String, value: &ComponentValue) {
         self.fields.insert(field, value.clone());
+    }
+}
+
+#[derive(Clone, PartialEq, Debug)]
+pub enum ComponentValue {
+    Nil,
+    Int(i64),
+    String(String),
+    Bool(bool),
+    Real(f64),
+}
+
+impl Default for ComponentValue {
+    fn default() -> Self {
+        ComponentValue::Nil
     }
 }
 
