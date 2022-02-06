@@ -1,6 +1,7 @@
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
+use std::rc::Rc;
 
 use uuid::Uuid;
 
@@ -37,7 +38,8 @@ pub struct ECSWorld {
     component_definitions: HashMap<ComponentInfo, Vec<ComponentFieldDefinition>>,
     component_names: HashMap<String, ComponentInfo>,
     entities: Vec<Uuid>,
-    components: HashMap<String, Vec<ComponentData>>,
+    components: HashMap<String, Vec<Rc<ComponentData>>>, // TODO: Rc maybe need to be Arc
+    components_of_entity: HashMap<Uuid, HashMap<String, Rc<ComponentData>>>,
 }
 
 impl ECSWorld {
@@ -50,15 +52,13 @@ impl ECSWorld {
         fields.hash(&mut hasher);
         name.hash(&mut hasher);
 
-        let info = ComponentInfo {
-            hash: hasher.finish(),
-        };
-
-        self.component_definitions.entry(info).or_insert(fields);
-
         if let std::collections::hash_map::Entry::Vacant(entry) =
             self.component_names.entry(name.clone())
         {
+            let info = ComponentInfo {
+                hash: hasher.finish(),
+            };
+            self.component_definitions.entry(info).or_insert(fields);
             entry.insert(info);
             self.components.insert(name.clone(), Vec::new());
             Result::Ok(info)
@@ -76,10 +76,26 @@ impl ECSWorld {
         id
     }
 
-    pub fn add_component_to_entity(&mut self, entity_id: Uuid, component: String) {
-        let components = self.components.get_mut(&component).unwrap();
+    pub fn add_component_to_entity(
+        &mut self,
+        entity_id: Uuid,
+        component: String,
+    ) -> Result<(), String> {
+        let components: &mut Vec<Rc<ComponentData>> = self.components.get_mut(&component).unwrap();
 
-        components.push(ComponentData::new(entity_id));
+        if components.iter().any(|d| d.get_entity() == entity_id) {
+            Err("Component was already added for that entity".to_string())
+        } else {
+            let data = Rc::new(ComponentData::new(entity_id));
+            components.push(data.clone());
+            let entity_components = self
+                .components_of_entity
+                .entry(entity_id)
+                .or_insert_with(HashMap::new);
+
+            entity_components.insert(component, data);
+            Ok(())
+        }
     }
 }
 
@@ -136,10 +152,7 @@ mod tests {
             VariantType::INT,
         )];
 
-        let result = world.register_component(
-            format!("{}_", component_name.to_string()),
-            definition_2.clone(),
-        );
+        let result = world.register_component(format!("{}_", component_name), definition_2);
         assert!(result.is_ok(), "Should have added a new component");
 
         let info_2 = result.unwrap();
@@ -164,9 +177,9 @@ mod tests {
         )];
 
         world
-            .register_component("Test".to_string(), definition.clone())
+            .register_component("Test".to_string(), definition)
             .unwrap();
-        let result = world.register_component("Test".to_string(), definition);
+        let result = world.register_component("Test".to_string(), definition_2);
         assert!(result.is_err())
     }
 
@@ -189,7 +202,7 @@ mod tests {
         assert_ne!(
             info_1.hash, info_2.hash,
             "Components with different names should have different hashes"
-        )
+        );
     }
 
     #[test]
@@ -210,13 +223,16 @@ mod tests {
             VariantType::INT,
         )];
         let component_name = "Test";
-        let info = world
+        world
             .register_component(component_name.to_string(), definition)
             .unwrap();
 
         let entity_id = world.create_entity();
 
-        world.add_component_to_entity(entity_id, component_name.to_string());
+        let result = world.add_component_to_entity(entity_id, component_name.to_string());
+
+        assert!(result.is_ok(), "Result should have been Ok");
+        drop(result);
 
         let components = world.components.get(component_name).unwrap();
         assert_eq!(
@@ -224,11 +240,54 @@ mod tests {
             components.len(),
             "Should have added a component to components"
         );
+
         let data = components.first().unwrap();
         assert_eq!(
             entity_id,
             data.get_entity(),
             "Added component should belong to the entity that was passed"
+        );
+
+        assert!(
+            world.components_of_entity.contains_key(&entity_id),
+            "components_of_entity should have an entry for the given entity"
+        );
+        let entity_components = world.components_of_entity.get(&entity_id).unwrap();
+
+        assert!(
+            entity_components.contains_key(component_name),
+            "components_of_entity for the given entity should have an entry with the component_name"
+        );
+
+        let component_data = entity_components.get(component_name).unwrap();
+
+        assert_eq!(
+            entity_id,
+            component_data.get_entity(),
+            "Added component should belong to the entity that was passed"
         )
+    }
+
+    #[test]
+    pub fn add_component_to_entity_does_not_allow_adding_the_same_component_twice_to_an_entity() {
+        let mut world = ECSWorld::default();
+        let definition = vec![ComponentFieldDefinition::new(
+            "Integer".to_string(),
+            VariantType::INT,
+        )];
+        let component_name = "Test";
+        world
+            .register_component(component_name.to_string(), definition)
+            .unwrap();
+
+        let entity_id = world.create_entity();
+
+        world
+            .add_component_to_entity(entity_id, component_name.to_string())
+            .unwrap();
+
+        let result = world.add_component_to_entity(entity_id, component_name.to_string());
+
+        assert!(result.is_err(), "Result should have been Err");
     }
 }
