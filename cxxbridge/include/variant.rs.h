@@ -80,4 +80,8 @@ private:
 } // namespace cxxbridge1
 } // namespace rust
 
-using Variant = ::Variant;
+namespace gcs {
+  namespace ffi {
+    using Variant = ::gcs::ffi::Variant;
+  }
+}

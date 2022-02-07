@@ -44,11 +44,11 @@ pub enum VariantType {
 }
 
 unsafe impl ExternType for VariantType {
-    type Id = type_id!("VariantType");
+    type Id = type_id!("gcs::ffi::VariantType");
     type Kind = cxx::kind::Trivial;
 }
 
-#[cxx::bridge]
+#[cxx::bridge(namespace = gcs::ffi)]
 pub mod ffi {
     unsafe extern "C++" {
         include!("../../include/variant.h");

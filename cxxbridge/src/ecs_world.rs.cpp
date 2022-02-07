@@ -1,4 +1,6 @@
 #include "cxx.h"
+#include "component.rs.h"
+#include "variant.h"
 #include <algorithm>
 #include <array>
 #include <cassert>
@@ -393,6 +395,162 @@ void Slice<T>::swap(Slice &rhs) noexcept {
 }
 #endif // CXXBRIDGE1_RUST_SLICE
 
+#ifndef CXXBRIDGE1_RUST_BOX
+#define CXXBRIDGE1_RUST_BOX
+template <typename T>
+class Box final {
+public:
+  using element_type = T;
+  using const_pointer =
+      typename std::add_pointer<typename std::add_const<T>::type>::type;
+  using pointer = typename std::add_pointer<T>::type;
+
+  Box() = delete;
+  Box(Box &&) noexcept;
+  ~Box() noexcept;
+
+  explicit Box(const T &);
+  explicit Box(T &&);
+
+  Box &operator=(Box &&) &noexcept;
+
+  const T *operator->() const noexcept;
+  const T &operator*() const noexcept;
+  T *operator->() noexcept;
+  T &operator*() noexcept;
+
+  template <typename... Fields>
+  static Box in_place(Fields &&...);
+
+  void swap(Box &) noexcept;
+
+  static Box from_raw(T *) noexcept;
+
+  T *into_raw() noexcept;
+
+  /* Deprecated */ using value_type = element_type;
+
+private:
+  class uninit;
+  class allocation;
+  Box(uninit) noexcept;
+  void drop() noexcept;
+
+  friend void swap(Box &lhs, Box &rhs) noexcept { lhs.swap(rhs); }
+
+  T *ptr;
+};
+
+template <typename T>
+class Box<T>::uninit {};
+
+template <typename T>
+class Box<T>::allocation {
+  static T *alloc() noexcept;
+  static void dealloc(T *) noexcept;
+
+public:
+  allocation() noexcept : ptr(alloc()) {}
+  ~allocation() noexcept {
+    if (this->ptr) {
+      dealloc(this->ptr);
+    }
+  }
+  T *ptr;
+};
+
+template <typename T>
+Box<T>::Box(Box &&other) noexcept : ptr(other.ptr) {
+  other.ptr = nullptr;
+}
+
+template <typename T>
+Box<T>::Box(const T &val) {
+  allocation alloc;
+  ::new (alloc.ptr) T(val);
+  this->ptr = alloc.ptr;
+  alloc.ptr = nullptr;
+}
+
+template <typename T>
+Box<T>::Box(T &&val) {
+  allocation alloc;
+  ::new (alloc.ptr) T(std::move(val));
+  this->ptr = alloc.ptr;
+  alloc.ptr = nullptr;
+}
+
+template <typename T>
+Box<T>::~Box() noexcept {
+  if (this->ptr) {
+    this->drop();
+  }
+}
+
+template <typename T>
+Box<T> &Box<T>::operator=(Box &&other) &noexcept {
+  if (this->ptr) {
+    this->drop();
+  }
+  this->ptr = other.ptr;
+  other.ptr = nullptr;
+  return *this;
+}
+
+template <typename T>
+const T *Box<T>::operator->() const noexcept {
+  return this->ptr;
+}
+
+template <typename T>
+const T &Box<T>::operator*() const noexcept {
+  return *this->ptr;
+}
+
+template <typename T>
+T *Box<T>::operator->() noexcept {
+  return this->ptr;
+}
+
+template <typename T>
+T &Box<T>::operator*() noexcept {
+  return *this->ptr;
+}
+
+template <typename T>
+template <typename... Fields>
+Box<T> Box<T>::in_place(Fields &&...fields) {
+  allocation alloc;
+  auto ptr = alloc.ptr;
+  ::new (ptr) T{std::forward<Fields>(fields)...};
+  alloc.ptr = nullptr;
+  return from_raw(ptr);
+}
+
+template <typename T>
+void Box<T>::swap(Box &rhs) noexcept {
+  using std::swap;
+  swap(this->ptr, rhs.ptr);
+}
+
+template <typename T>
+Box<T> Box<T>::from_raw(T *raw) noexcept {
+  Box box = uninit{};
+  box.ptr = raw;
+  return box;
+}
+
+template <typename T>
+T *Box<T>::into_raw() noexcept {
+  T *raw = this->ptr;
+  this->ptr = nullptr;
+  return raw;
+}
+
+template <typename T>
+Box<T>::Box(uninit) noexcept {}
+#endif // CXXBRIDGE1_RUST_BOX
+
 #ifndef CXXBRIDGE1_RUST_BITCOPY_T
 #define CXXBRIDGE1_RUST_BITCOPY_T
 struct unsafe_bitcopy_t final {
@@ -737,6 +895,43 @@ std::size_t align_of() {
 }
 #endif // CXXBRIDGE1_LAYOUT
 
+#ifndef CXXBRIDGE1_RELOCATABLE
+#define CXXBRIDGE1_RELOCATABLE
+namespace detail {
+template <typename... Ts>
+struct make_void {
+  using type = void;
+};
+
+template <typename... Ts>
+using void_t = typename make_void<Ts...>::type;
+
+template <typename Void, template <typename...> class, typename...>
+struct detect : std::false_type {};
+template <template <typename...> class T, typename... A>
+struct detect<void_t<T<A...>>, T, A...> : std::true_type {};
+
+template <template <typename...> class T, typename... A>
+using is_detected = detect<void, T, A...>;
+
+template <typename T>
+using detect_IsRelocatable = typename T::IsRelocatable;
+
+template <typename T>
+struct get_IsRelocatable
+    : std::is_same<typename T::IsRelocatable, std::true_type> {};
+} // namespace detail
+
+template <typename T>
+struct IsRelocatable
+    : std::conditional<
+          detail::is_detected<detail::detect_IsRelocatable, T>::value,
+          detail::get_IsRelocatable<T>,
+          std::integral_constant<
+              bool, std::is_trivially_move_constructible<T>::value &&
+                        std::is_trivially_destructible<T>::value>>::type {};
+#endif // CXXBRIDGE1_RELOCATABLE
+
 namespace detail {
 template <typename T, typename = void *>
 struct operator_new {
@@ -786,13 +981,18 @@ public:
 } // namespace cxxbridge1
 } // namespace rust
 
-struct ComponentInfo;
-struct ECSWorld;
-struct ComponentFieldDefinition;
-struct Uuid;
+namespace gcs {
+  namespace ffi {
+    struct ComponentInfo;
+    struct ECSWorld;
+    struct Uuid;
+  }
+}
 
-#ifndef CXXBRIDGE1_STRUCT_ComponentInfo
-#define CXXBRIDGE1_STRUCT_ComponentInfo
+namespace gcs {
+namespace ffi {
+#ifndef CXXBRIDGE1_STRUCT_gcs$ffi$ComponentInfo
+#define CXXBRIDGE1_STRUCT_gcs$ffi$ComponentInfo
 struct ComponentInfo final {
   ::std::uint64_t hash;
 
@@ -800,12 +1000,14 @@ struct ComponentInfo final {
   bool operator!=(const ComponentInfo &) const noexcept;
   using IsRelocatable = ::std::true_type;
 };
-#endif // CXXBRIDGE1_STRUCT_ComponentInfo
+#endif // CXXBRIDGE1_STRUCT_gcs$ffi$ComponentInfo
 
-#ifndef CXXBRIDGE1_STRUCT_ECSWorld
-#define CXXBRIDGE1_STRUCT_ECSWorld
+#ifndef CXXBRIDGE1_STRUCT_gcs$ffi$ECSWorld
+#define CXXBRIDGE1_STRUCT_gcs$ffi$ECSWorld
 struct ECSWorld final : public ::rust::Opaque {
-  ::ComponentInfo register_component(::rust::String name, ::rust::Vec<::ComponentFieldDefinition> fields);
+  ::gcs::ffi::ComponentInfo register_component(::rust::String name, ::rust::Vec<::gcs::ffi::ComponentFieldDefinition> fields);
+  ::rust::Box<::gcs::ffi::Uuid> register_entity(::std::uint64_t id);
+  void set_component_data(const ::gcs::ffi::Uuid &entity_id, ::rust::String component, const ::gcs::ffi::ComponentData &data);
   ~ECSWorld() = delete;
 
 private:
@@ -815,24 +1017,10 @@ private:
     static ::std::size_t align() noexcept;
   };
 };
-#endif // CXXBRIDGE1_STRUCT_ECSWorld
+#endif // CXXBRIDGE1_STRUCT_gcs$ffi$ECSWorld
 
-#ifndef CXXBRIDGE1_STRUCT_ComponentFieldDefinition
-#define CXXBRIDGE1_STRUCT_ComponentFieldDefinition
-struct ComponentFieldDefinition final : public ::rust::Opaque {
-  ~ComponentFieldDefinition() = delete;
-
-private:
-  friend ::rust::layout;
-  struct layout {
-    static ::std::size_t size() noexcept;
-    static ::std::size_t align() noexcept;
-  };
-};
-#endif // CXXBRIDGE1_STRUCT_ComponentFieldDefinition
-
-#ifndef CXXBRIDGE1_STRUCT_Uuid
-#define CXXBRIDGE1_STRUCT_Uuid
+#ifndef CXXBRIDGE1_STRUCT_gcs$ffi$Uuid
+#define CXXBRIDGE1_STRUCT_gcs$ffi$Uuid
 struct Uuid final : public ::rust::Opaque {
   ~Uuid() = delete;
 
@@ -843,31 +1031,45 @@ private:
     static ::std::size_t align() noexcept;
   };
 };
-#endif // CXXBRIDGE1_STRUCT_Uuid
+#endif // CXXBRIDGE1_STRUCT_gcs$ffi$Uuid
+} // namespace ffi
+} // namespace gcs
 
+static_assert(
+    ::rust::IsRelocatable<::gcs::ffi::ComponentFieldDefinition>::value,
+    "type gcs::ffi::ComponentFieldDefinition should be trivially move constructible and trivially destructible in C++ to be used as a vector element in Vec<ComponentFieldDefinition> in Rust");
+
+namespace gcs {
+namespace ffi {
 extern "C" {
-bool cxxbridge1$ComponentInfo$operator$eq(const ComponentInfo &, const ComponentInfo &) noexcept;
-::std::size_t cxxbridge1$ComponentInfo$operator$hash(const ComponentInfo &) noexcept;
-::std::size_t cxxbridge1$ECSWorld$operator$sizeof() noexcept;
-::std::size_t cxxbridge1$ECSWorld$operator$alignof() noexcept;
-::std::size_t cxxbridge1$ComponentFieldDefinition$operator$sizeof() noexcept;
-::std::size_t cxxbridge1$ComponentFieldDefinition$operator$alignof() noexcept;
-::std::size_t cxxbridge1$Uuid$operator$sizeof() noexcept;
-::std::size_t cxxbridge1$Uuid$operator$alignof() noexcept;
+bool gcs$ffi$cxxbridge1$ComponentInfo$operator$eq(const ComponentInfo &, const ComponentInfo &) noexcept;
+::std::size_t gcs$ffi$cxxbridge1$ComponentInfo$operator$hash(const ComponentInfo &) noexcept;
+::std::size_t gcs$ffi$cxxbridge1$ECSWorld$operator$sizeof() noexcept;
+::std::size_t gcs$ffi$cxxbridge1$ECSWorld$operator$alignof() noexcept;
+::std::size_t gcs$ffi$cxxbridge1$Uuid$operator$sizeof() noexcept;
+::std::size_t gcs$ffi$cxxbridge1$Uuid$operator$alignof() noexcept;
 
-::rust::repr::PtrLen cxxbridge1$ECSWorld$register_component(::ECSWorld &self, ::rust::String *name, ::rust::Vec<::ComponentFieldDefinition> *fields, ::ComponentInfo *return$) noexcept;
+::rust::repr::PtrLen gcs$ffi$cxxbridge1$ECSWorld$register_component(::gcs::ffi::ECSWorld &self, ::rust::String *name, ::rust::Vec<::gcs::ffi::ComponentFieldDefinition> *fields, ::gcs::ffi::ComponentInfo *return$) noexcept;
+
+::rust::repr::PtrLen gcs$ffi$cxxbridge1$ECSWorld$register_entity(::gcs::ffi::ECSWorld &self, ::std::uint64_t id, ::rust::Box<::gcs::ffi::Uuid> *return$) noexcept;
+
+::rust::repr::PtrLen gcs$ffi$cxxbridge1$ECSWorld$set_component_data(::gcs::ffi::ECSWorld &self, const ::gcs::ffi::Uuid &entity_id, ::rust::String *component, const ::gcs::ffi::ComponentData &data) noexcept;
 } // extern "C"
+} // namespace ffi
+} // namespace gcs
 
 namespace std {
-template <> struct hash<::ComponentInfo> {
-  ::std::size_t operator()(const ::ComponentInfo &self) const noexcept {
-    return ::cxxbridge1$ComponentInfo$operator$hash(self);
+template <> struct hash<::gcs::ffi::ComponentInfo> {
+  ::std::size_t operator()(const ::gcs::ffi::ComponentInfo &self) const noexcept {
+    return ::gcs::ffi::gcs$ffi$cxxbridge1$ComponentInfo$operator$hash(self);
   }
 };
 } // namespace std
 
+namespace gcs {
+namespace ffi {
 bool ComponentInfo::operator==(const ComponentInfo &rhs) const noexcept {
-  return cxxbridge1$ComponentInfo$operator$eq(*this, rhs);
+  return gcs$ffi$cxxbridge1$ComponentInfo$operator$eq(*this, rhs);
 }
 
 bool ComponentInfo::operator!=(const ComponentInfo &rhs) const noexcept {
@@ -875,83 +1077,68 @@ bool ComponentInfo::operator!=(const ComponentInfo &rhs) const noexcept {
 }
 
 ::std::size_t ECSWorld::layout::size() noexcept {
-  return cxxbridge1$ECSWorld$operator$sizeof();
+  return gcs$ffi$cxxbridge1$ECSWorld$operator$sizeof();
 }
 
 ::std::size_t ECSWorld::layout::align() noexcept {
-  return cxxbridge1$ECSWorld$operator$alignof();
-}
-
-::std::size_t ComponentFieldDefinition::layout::size() noexcept {
-  return cxxbridge1$ComponentFieldDefinition$operator$sizeof();
-}
-
-::std::size_t ComponentFieldDefinition::layout::align() noexcept {
-  return cxxbridge1$ComponentFieldDefinition$operator$alignof();
+  return gcs$ffi$cxxbridge1$ECSWorld$operator$alignof();
 }
 
 ::std::size_t Uuid::layout::size() noexcept {
-  return cxxbridge1$Uuid$operator$sizeof();
+  return gcs$ffi$cxxbridge1$Uuid$operator$sizeof();
 }
 
 ::std::size_t Uuid::layout::align() noexcept {
-  return cxxbridge1$Uuid$operator$alignof();
+  return gcs$ffi$cxxbridge1$Uuid$operator$alignof();
 }
 
-::ComponentInfo ECSWorld::register_component(::rust::String name, ::rust::Vec<::ComponentFieldDefinition> fields) {
-  ::rust::ManuallyDrop<::rust::Vec<::ComponentFieldDefinition>> fields$(::std::move(fields));
-  ::rust::MaybeUninit<::ComponentInfo> return$;
-  ::rust::repr::PtrLen error$ = cxxbridge1$ECSWorld$register_component(*this, &name, &fields$.value, &return$.value);
+::gcs::ffi::ComponentInfo ECSWorld::register_component(::rust::String name, ::rust::Vec<::gcs::ffi::ComponentFieldDefinition> fields) {
+  ::rust::ManuallyDrop<::rust::Vec<::gcs::ffi::ComponentFieldDefinition>> fields$(::std::move(fields));
+  ::rust::MaybeUninit<::gcs::ffi::ComponentInfo> return$;
+  ::rust::repr::PtrLen error$ = gcs$ffi$cxxbridge1$ECSWorld$register_component(*this, &name, &fields$.value, &return$.value);
   if (error$.ptr) {
     throw ::rust::impl<::rust::Error>::error(error$);
   }
   return ::std::move(return$.value);
 }
 
+::rust::Box<::gcs::ffi::Uuid> ECSWorld::register_entity(::std::uint64_t id) {
+  ::rust::MaybeUninit<::rust::Box<::gcs::ffi::Uuid>> return$;
+  ::rust::repr::PtrLen error$ = gcs$ffi$cxxbridge1$ECSWorld$register_entity(*this, id, &return$.value);
+  if (error$.ptr) {
+    throw ::rust::impl<::rust::Error>::error(error$);
+  }
+  return ::std::move(return$.value);
+}
+
+void ECSWorld::set_component_data(const ::gcs::ffi::Uuid &entity_id, ::rust::String component, const ::gcs::ffi::ComponentData &data) {
+  ::rust::repr::PtrLen error$ = gcs$ffi$cxxbridge1$ECSWorld$set_component_data(*this, entity_id, &component, data);
+  if (error$.ptr) {
+    throw ::rust::impl<::rust::Error>::error(error$);
+  }
+}
+} // namespace ffi
+} // namespace gcs
+
 extern "C" {
-void cxxbridge1$rust_vec$ComponentFieldDefinition$new(const ::rust::Vec<::ComponentFieldDefinition> *ptr) noexcept;
-void cxxbridge1$rust_vec$ComponentFieldDefinition$drop(::rust::Vec<::ComponentFieldDefinition> *ptr) noexcept;
-::std::size_t cxxbridge1$rust_vec$ComponentFieldDefinition$len(const ::rust::Vec<::ComponentFieldDefinition> *ptr) noexcept;
-::std::size_t cxxbridge1$rust_vec$ComponentFieldDefinition$capacity(const ::rust::Vec<::ComponentFieldDefinition> *ptr) noexcept;
-const ::ComponentFieldDefinition *cxxbridge1$rust_vec$ComponentFieldDefinition$data(const ::rust::Vec<::ComponentFieldDefinition> *ptr) noexcept;
-void cxxbridge1$rust_vec$ComponentFieldDefinition$reserve_total(::rust::Vec<::ComponentFieldDefinition> *ptr, ::std::size_t new_cap) noexcept;
-void cxxbridge1$rust_vec$ComponentFieldDefinition$set_len(::rust::Vec<::ComponentFieldDefinition> *ptr, ::std::size_t len) noexcept;
-void cxxbridge1$rust_vec$ComponentFieldDefinition$truncate(::rust::Vec<::ComponentFieldDefinition> *ptr, ::std::size_t len) noexcept;
+::gcs::ffi::Uuid *cxxbridge1$box$gcs$ffi$Uuid$alloc() noexcept;
+void cxxbridge1$box$gcs$ffi$Uuid$dealloc(::gcs::ffi::Uuid *) noexcept;
+void cxxbridge1$box$gcs$ffi$Uuid$drop(::rust::Box<::gcs::ffi::Uuid> *ptr) noexcept;
 } // extern "C"
 
 namespace rust {
 inline namespace cxxbridge1 {
 template <>
-Vec<::ComponentFieldDefinition>::Vec() noexcept {
-  cxxbridge1$rust_vec$ComponentFieldDefinition$new(this);
+::gcs::ffi::Uuid *Box<::gcs::ffi::Uuid>::allocation::alloc() noexcept {
+  return cxxbridge1$box$gcs$ffi$Uuid$alloc();
 }
 template <>
-void Vec<::ComponentFieldDefinition>::drop() noexcept {
-  return cxxbridge1$rust_vec$ComponentFieldDefinition$drop(this);
+void Box<::gcs::ffi::Uuid>::allocation::dealloc(::gcs::ffi::Uuid *ptr) noexcept {
+  cxxbridge1$box$gcs$ffi$Uuid$dealloc(ptr);
 }
 template <>
-::std::size_t Vec<::ComponentFieldDefinition>::size() const noexcept {
-  return cxxbridge1$rust_vec$ComponentFieldDefinition$len(this);
-}
-template <>
-::std::size_t Vec<::ComponentFieldDefinition>::capacity() const noexcept {
-  return cxxbridge1$rust_vec$ComponentFieldDefinition$capacity(this);
-}
-template <>
-const ::ComponentFieldDefinition *Vec<::ComponentFieldDefinition>::data() const noexcept {
-  return cxxbridge1$rust_vec$ComponentFieldDefinition$data(this);
-}
-template <>
-void Vec<::ComponentFieldDefinition>::reserve_total(::std::size_t new_cap) noexcept {
-  return cxxbridge1$rust_vec$ComponentFieldDefinition$reserve_total(this, new_cap);
-}
-template <>
-void Vec<::ComponentFieldDefinition>::set_len(::std::size_t len) noexcept {
-  return cxxbridge1$rust_vec$ComponentFieldDefinition$set_len(this, len);
-}
-template <>
-void Vec<::ComponentFieldDefinition>::truncate(::std::size_t len) {
-  return cxxbridge1$rust_vec$ComponentFieldDefinition$truncate(this, len);
+void Box<::gcs::ffi::Uuid>::drop() noexcept {
+  cxxbridge1$box$gcs$ffi$Uuid$drop(this);
 }
 } // namespace cxxbridge1
 } // namespace rust

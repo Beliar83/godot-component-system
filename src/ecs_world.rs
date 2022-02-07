@@ -1,19 +1,22 @@
-use std::cell::{RefCell, RefMut};
+use std::cell::RefCell;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
+use std::fmt::{Display, Formatter};
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 
+use crate::component::ComponentData;
 use uuid::Uuid;
 
 use crate::component::ffi::ComponentFieldDefinition;
-use crate::component::ComponentData;
 use crate::ecs_world::ffi::ComponentInfo;
+use crate::ecs_world::RegisterEntityError::AlreadyRegistered;
 use crate::ecs_world::SetComponentDataError::{ComponentNotFound, DataInUse, EntityNotFound};
 
-struct UuidCXX(uuid::Uuid);
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
+pub struct EntityId(uuid::Uuid);
 
-#[cxx::bridge]
+#[cxx::bridge(namespace = gcs::ffi)]
 pub mod ffi {
     #[derive(Eq, PartialEq, Hash, Copy, Clone)]
     pub struct ComponentInfo {
@@ -22,16 +25,37 @@ pub mod ffi {
 
     extern "Rust" {
         include!("cxx.h");
+        include!("component.rs.h");
         type ECSWorld;
-        type ComponentFieldDefinition;
+
         #[cxx_name = "Uuid"]
-        type UuidCXX;
+        type EntityId;
 
         fn register_component(
             self: &mut ECSWorld,
             name: String,
             fields: Vec<ComponentFieldDefinition>,
         ) -> Result<ComponentInfo>;
+
+        fn register_entity(self: &mut ECSWorld, id: u64) -> Result<Box<EntityId>>;
+
+        pub fn set_component_data(
+            self: &mut ECSWorld,
+            entity_id: &EntityId,
+            component: String,
+            data: &ComponentData,
+        ) -> Result<()>;
+    }
+
+    extern "C++" {
+        include!("variant.h");
+
+        type ComponentFieldDefinition = crate::component::ffi::ComponentFieldDefinition;
+
+        pub type Variant = crate::godot::variant::ffi::Variant;
+        #[namespace = "gcs::ffi"]
+        type ComponentData = crate::component::ComponentData;
+
     }
 }
 #[derive(PartialEq, Debug)]
@@ -41,13 +65,44 @@ pub enum SetComponentDataError {
     DataInUse,
 }
 
+impl Display for SetComponentDataError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            EntityNotFound => {
+                write!(f, "Entity with that id is was not found")
+            }
+            ComponentNotFound => {
+                write!(f, "Component with that name is already registered")
+            }
+            DataInUse => {
+                write!(f, "The data is already exclusively borrowed")
+            }
+        }
+    }
+}
+
+#[derive(PartialEq, Debug)]
+pub enum RegisterEntityError {
+    AlreadyRegistered,
+}
+
+impl Display for RegisterEntityError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            AlreadyRegistered => {
+                write!(f, "Entity with that id is already registered")
+            }
+        }
+    }
+}
+
 #[derive(Default)]
 pub struct ECSWorld {
     component_definitions: HashMap<ComponentInfo, Vec<ComponentFieldDefinition>>,
     component_names: HashMap<String, ComponentInfo>,
-    entities: Vec<Uuid>,
+    entities: Vec<EntityId>,
     components: HashMap<String, Vec<Rc<RefCell<ComponentData>>>>,
-    components_of_entity: HashMap<Uuid, HashMap<String, Rc<RefCell<ComponentData>>>>,
+    components_of_entity: HashMap<EntityId, HashMap<String, Rc<RefCell<ComponentData>>>>,
 }
 
 impl ECSWorld {
@@ -78,32 +133,42 @@ impl ECSWorld {
         }
     }
 
-    pub fn create_entity(&mut self) -> Uuid {
-        let id = Uuid::new_v4();
+    pub fn create_entity(&mut self) -> EntityId {
+        let id = EntityId(Uuid::new_v4());
         self.entities.push(id);
         id
     }
 
+    pub fn register_entity(&mut self, id: u64) -> Result<Box<EntityId>, RegisterEntityError> {
+        let id = EntityId(Uuid::from_u128(id as u128));
+        if self.entities.contains(&id) {
+            Err(AlreadyRegistered)
+        } else {
+            self.entities.push(id);
+            Ok(Box::new(id))
+        }
+    }
+
     pub fn add_component_to_entity(
         &mut self,
-        entity_id: Uuid,
+        entity_id: &EntityId,
         component: String,
     ) -> Result<(), String> {
         let components = self.components.get_mut(&component).unwrap();
 
         if components
             .iter()
-            .any(|d| d.borrow().get_entity() == entity_id)
+            .any(|d| d.borrow().get_entity() == *entity_id)
         {
             Err("Component was already added for that entity".to_string())
         } else {
-            let value = RefCell::new(ComponentData::new(entity_id));
+            let value = RefCell::new(ComponentData::new(*entity_id));
             let data = Rc::new(value);
             components.push(data.clone());
 
             let entity_components = self
                 .components_of_entity
-                .entry(entity_id)
+                .entry(*entity_id)
                 .or_insert_with(HashMap::new);
 
             entity_components.insert(component, data);
@@ -113,16 +178,21 @@ impl ECSWorld {
 
     pub fn set_component_data(
         &mut self,
-        entity_id: Uuid,
+        entity_id: &EntityId,
         component: String,
-        data: ComponentData,
+        data: &ComponentData,
     ) -> Result<(), SetComponentDataError> {
         if !self.entities.contains(&entity_id) {
             Err(EntityNotFound)
         } else if !self.components.contains_key(&component) {
             Err(ComponentNotFound)
         } else {
-            if !self.components_of_entity.contains_key(&entity_id) {
+            if self
+                .components_of_entity
+                .get(entity_id)
+                .and_then(|c| c.get(&component))
+                .is_none()
+            {
                 self.add_component_to_entity(entity_id, component.clone())
                     .unwrap();
             }
@@ -158,8 +228,8 @@ impl ECSWorld {
 mod tests {
     use crate::component::ffi::ComponentFieldDefinition;
     use crate::component::{ComponentData, ComponentValue};
-    use crate::ecs_world::ECSWorld;
     use crate::ecs_world::SetComponentDataError::{ComponentNotFound, EntityNotFound};
+    use crate::ecs_world::{ECSWorld, EntityId};
     use crate::godot::variant::VariantType;
     use uuid::Uuid;
 
@@ -287,7 +357,7 @@ mod tests {
 
         let entity_id = world.create_entity();
 
-        let result = world.add_component_to_entity(entity_id, component_name.to_string());
+        let result = world.add_component_to_entity(&entity_id, component_name.to_string());
 
         assert!(result.is_ok(), "Result should have been Ok");
         drop(result);
@@ -341,10 +411,10 @@ mod tests {
         let entity_id = world.create_entity();
 
         world
-            .add_component_to_entity(entity_id, component_name.to_string())
+            .add_component_to_entity(&entity_id, component_name.to_string())
             .unwrap();
 
-        let result = world.add_component_to_entity(entity_id, component_name.to_string());
+        let result = world.add_component_to_entity(&entity_id, component_name.to_string());
 
         assert!(result.is_err(), "Result should have been Err");
     }
@@ -365,7 +435,7 @@ mod tests {
         let entity_id = world.create_entity();
 
         world
-            .add_component_to_entity(entity_id, component_name.to_string())
+            .add_component_to_entity(&entity_id, component_name.to_string())
             .unwrap();
 
         let mut data = ComponentData::new(entity_id);
@@ -374,7 +444,7 @@ mod tests {
 
         assert!(
             world
-                .set_component_data(entity_id, component_name.to_string(), data)
+                .set_component_data(&entity_id, component_name.to_string(), &data)
                 .is_ok(),
             "set_component_data should have returned Ok"
         );
@@ -407,12 +477,12 @@ mod tests {
     #[test]
     pub fn set_component_checks_that_entity_exists() {
         let mut world = ECSWorld::default();
-        let entity_id = Uuid::new_v4();
+        let entity_id = EntityId(Uuid::new_v4());
         let data = ComponentData::new(entity_id);
 
         assert_eq!(
             Err(EntityNotFound),
-            world.set_component_data(entity_id, "Test".to_string(), data)
+            world.set_component_data(&entity_id, "Test".to_string(), &data)
         );
     }
 
@@ -424,12 +494,44 @@ mod tests {
         let data = ComponentData::new(entity_id);
         assert_eq!(
             Err(ComponentNotFound),
-            world.set_component_data(entity_id, "Test".to_string(), data)
+            world.set_component_data(&entity_id, "Test".to_string(), &data)
         );
     }
 
     #[test]
     pub fn set_component_adds_component_to_entity_if_it_is_not_added() {
+        let mut world = ECSWorld::default();
+        let definition = vec![ComponentFieldDefinition::new(
+            "Boolean".to_string(),
+            VariantType::BOOL,
+        )];
+
+        let field_name = "Integer";
+        let definition_2 = vec![ComponentFieldDefinition::new(
+            field_name.to_string(),
+            VariantType::INT,
+        )];
+        let component_name = "Test_2";
+        world
+            .register_component("Test_1".to_string(), definition)
+            .unwrap();
+        world
+            .register_component(component_name.to_string(), definition_2)
+            .unwrap();
+
+        let entity_id = world.create_entity();
+        world.add_component_to_entity(&entity_id, "Test_1".to_string());
+
+        let mut data = ComponentData::new(entity_id);
+        let value = 2;
+        data.set_field(field_name.to_string(), &ComponentValue::Int(value));
+
+        assert!(world
+            .set_component_data(&entity_id, component_name.to_string(), &data)
+            .is_ok());
+    }
+    #[test]
+    pub fn set_component_adds_initializes_entity_components_if_not_present() {
         let mut world = ECSWorld::default();
         let field_name = "Integer";
         let definition = vec![ComponentFieldDefinition::new(
@@ -446,8 +548,10 @@ mod tests {
         let value = 2;
         data.set_field(field_name.to_string(), &ComponentValue::Int(value));
 
-        assert!(world
-            .set_component_data(entity_id, component_name.to_string(), data)
-            .is_ok());
+        world
+            .set_component_data(&entity_id, component_name.to_string(), &data)
+            .unwrap();
+
+        assert_eq!(1, world.components_of_entity.get(&entity_id).unwrap().len())
     }
 }

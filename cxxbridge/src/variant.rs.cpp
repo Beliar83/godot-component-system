@@ -118,35 +118,43 @@ struct IsRelocatable
 } // namespace cxxbridge1
 } // namespace rust
 
-using Variant = ::Variant;
-
-static_assert(
-    ::rust::IsRelocatable<::VariantType>::value,
-    "type VariantType should be trivially move constructible and trivially destructible in C++ to be used as a return value of `get_type` in Rust");
-
-extern "C" {
-void cxxbridge1$Variant$get_type(const ::Variant &self, ::VariantType *return$) noexcept {
-  ::VariantType (::Variant::*get_type$)() const = &::Variant::get_type;
-  new (return$) ::VariantType((self.*get_type$)());
+namespace gcs {
+  namespace ffi {
+    using Variant = ::gcs::ffi::Variant;
+  }
 }
 
-::std::int64_t cxxbridge1$variant_as_i64(const ::Variant &variant) noexcept {
-  ::std::int64_t (*variant_as_i64$)(const ::Variant &) = ::variant_as_i64;
+static_assert(
+    ::rust::IsRelocatable<::gcs::ffi::VariantType>::value,
+    "type gcs::ffi::VariantType should be trivially move constructible and trivially destructible in C++ to be used as a return value of `get_type` in Rust");
+
+namespace gcs {
+namespace ffi {
+extern "C" {
+void gcs$ffi$cxxbridge1$Variant$get_type(const ::gcs::ffi::Variant &self, ::gcs::ffi::VariantType *return$) noexcept {
+  ::gcs::ffi::VariantType (::gcs::ffi::Variant::*get_type$)() const = &::gcs::ffi::Variant::get_type;
+  new (return$) ::gcs::ffi::VariantType((self.*get_type$)());
+}
+
+::std::int64_t gcs$ffi$cxxbridge1$variant_as_i64(const ::gcs::ffi::Variant &variant) noexcept {
+  ::std::int64_t (*variant_as_i64$)(const ::gcs::ffi::Variant &) = ::gcs::ffi::variant_as_i64;
   return variant_as_i64$(variant);
 }
 
-void cxxbridge1$variant_as_string(const ::Variant &variant, ::rust::String *return$) noexcept {
-  ::rust::String (*variant_as_string$)(const ::Variant &) = ::variant_as_string;
+void gcs$ffi$cxxbridge1$variant_as_string(const ::gcs::ffi::Variant &variant, ::rust::String *return$) noexcept {
+  ::rust::String (*variant_as_string$)(const ::gcs::ffi::Variant &) = ::gcs::ffi::variant_as_string;
   new (return$) ::rust::String(variant_as_string$(variant));
 }
 
-bool cxxbridge1$variant_as_bool(const ::Variant &variant) noexcept {
-  bool (*variant_as_bool$)(const ::Variant &) = ::variant_as_bool;
+bool gcs$ffi$cxxbridge1$variant_as_bool(const ::gcs::ffi::Variant &variant) noexcept {
+  bool (*variant_as_bool$)(const ::gcs::ffi::Variant &) = ::gcs::ffi::variant_as_bool;
   return variant_as_bool$(variant);
 }
 
-double cxxbridge1$variant_as_f64(const ::Variant &variant) noexcept {
-  double (*variant_as_f64$)(const ::Variant &) = ::variant_as_f64;
+double gcs$ffi$cxxbridge1$variant_as_f64(const ::gcs::ffi::Variant &variant) noexcept {
+  double (*variant_as_f64$)(const ::gcs::ffi::Variant &) = ::gcs::ffi::variant_as_f64;
   return variant_as_f64$(variant);
 }
 } // extern "C"
+} // namespace ffi
+} // namespace gcs

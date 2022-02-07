@@ -1,12 +1,13 @@
 use crate::component::ffi::{
     empty_variant, variant_from_bool, variant_from_f64, variant_from_i64, variant_from_string,
 };
+use crate::ecs_world::EntityId;
 use crate::godot::variant::ffi::Variant;
 use crate::godot::variant::ffi::VariantType;
+use cxx::{type_id, ExternType};
 use std::collections::HashMap;
-use uuid::Uuid;
 
-#[cxx::bridge]
+#[cxx::bridge(namespace = gcs::ffi)]
 pub mod ffi {
     #[derive(Hash, Eq, PartialEq, Debug, Clone)]
     pub struct ComponentFieldDefinition {
@@ -45,19 +46,19 @@ pub mod ffi {
 }
 
 pub struct ComponentData {
-    entity: Uuid,
+    entity: EntityId,
     fields: HashMap<String, ComponentValue>,
 }
 
 impl ComponentData {
-    pub fn new(entity: Uuid) -> Self {
+    pub fn new(entity: EntityId) -> Self {
         Self {
             entity,
             fields: HashMap::new(),
         }
     }
 
-    pub fn get_entity(&self) -> Uuid {
+    pub fn get_entity(&self) -> EntityId {
         self.entity
     }
 
@@ -72,6 +73,11 @@ impl ComponentData {
     pub fn set_field(&mut self, field: String, value: &ComponentValue) {
         self.fields.insert(field, value.clone());
     }
+}
+
+unsafe impl ExternType for ComponentData {
+    type Id = type_id!("gcs::ffi::ComponentData");
+    type Kind = cxx::kind::Opaque;
 }
 
 #[derive(Clone, PartialEq, Debug)]

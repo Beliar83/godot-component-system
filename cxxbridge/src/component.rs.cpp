@@ -238,27 +238,33 @@ union MaybeUninit {
 } // namespace cxxbridge1
 } // namespace rust
 
-struct ComponentFieldDefinition;
-struct ComponentData;
-struct ComponentValue;
+namespace gcs {
+  namespace ffi {
+    struct ComponentFieldDefinition;
+    struct ComponentData;
+    struct ComponentValue;
+  }
+}
 
-#ifndef CXXBRIDGE1_STRUCT_ComponentFieldDefinition
-#define CXXBRIDGE1_STRUCT_ComponentFieldDefinition
+namespace gcs {
+namespace ffi {
+#ifndef CXXBRIDGE1_STRUCT_gcs$ffi$ComponentFieldDefinition
+#define CXXBRIDGE1_STRUCT_gcs$ffi$ComponentFieldDefinition
 struct ComponentFieldDefinition final {
   ::rust::String name;
-  ::VariantType field_type;
+  ::gcs::ffi::VariantType field_type;
 
   bool operator==(const ComponentFieldDefinition &) const noexcept;
   bool operator!=(const ComponentFieldDefinition &) const noexcept;
   using IsRelocatable = ::std::true_type;
 };
-#endif // CXXBRIDGE1_STRUCT_ComponentFieldDefinition
+#endif // CXXBRIDGE1_STRUCT_gcs$ffi$ComponentFieldDefinition
 
-#ifndef CXXBRIDGE1_STRUCT_ComponentData
-#define CXXBRIDGE1_STRUCT_ComponentData
+#ifndef CXXBRIDGE1_STRUCT_gcs$ffi$ComponentData
+#define CXXBRIDGE1_STRUCT_gcs$ffi$ComponentData
 struct ComponentData final : public ::rust::Opaque {
-  const ::ComponentValue &get_field(::rust::String field) const noexcept;
-  void set_field(::rust::String field, const ::ComponentValue &value) noexcept;
+  const ::gcs::ffi::ComponentValue &get_field(::rust::String field) const noexcept;
+  void set_field(::rust::String field, const ::gcs::ffi::ComponentValue &value) noexcept;
   ~ComponentData() = delete;
 
 private:
@@ -268,10 +274,10 @@ private:
     static ::std::size_t align() noexcept;
   };
 };
-#endif // CXXBRIDGE1_STRUCT_ComponentData
+#endif // CXXBRIDGE1_STRUCT_gcs$ffi$ComponentData
 
-#ifndef CXXBRIDGE1_STRUCT_ComponentValue
-#define CXXBRIDGE1_STRUCT_ComponentValue
+#ifndef CXXBRIDGE1_STRUCT_gcs$ffi$ComponentValue
+#define CXXBRIDGE1_STRUCT_gcs$ffi$ComponentValue
 struct ComponentValue final : public ::rust::Opaque {
   ~ComponentValue() = delete;
 
@@ -282,101 +288,111 @@ private:
     static ::std::size_t align() noexcept;
   };
 };
-#endif // CXXBRIDGE1_STRUCT_ComponentValue
+#endif // CXXBRIDGE1_STRUCT_gcs$ffi$ComponentValue
+} // namespace ffi
+} // namespace gcs
 
 static_assert(
-    ::rust::IsRelocatable<::VariantType>::value,
-    "type VariantType should be trivially move constructible and trivially destructible in C++ to be used as a field of `ComponentFieldDefinition` or argument of `create_component_field_definition` in Rust");
+    ::rust::IsRelocatable<::gcs::ffi::VariantType>::value,
+    "type gcs::ffi::VariantType should be trivially move constructible and trivially destructible in C++ to be used as a field of `ComponentFieldDefinition` or argument of `create_component_field_definition` in Rust");
 
+namespace gcs {
+namespace ffi {
 extern "C" {
-bool cxxbridge1$ComponentFieldDefinition$operator$eq(const ComponentFieldDefinition &, const ComponentFieldDefinition &) noexcept;
-::std::size_t cxxbridge1$ComponentFieldDefinition$operator$hash(const ComponentFieldDefinition &) noexcept;
+bool gcs$ffi$cxxbridge1$ComponentFieldDefinition$operator$eq(const ComponentFieldDefinition &, const ComponentFieldDefinition &) noexcept;
+::std::size_t gcs$ffi$cxxbridge1$ComponentFieldDefinition$operator$hash(const ComponentFieldDefinition &) noexcept;
 
-void cxxbridge1$create_component_field_definition(::rust::String *name, ::VariantType *field_type, ::ComponentFieldDefinition *return$) noexcept;
-::std::size_t cxxbridge1$ComponentData$operator$sizeof() noexcept;
-::std::size_t cxxbridge1$ComponentData$operator$alignof() noexcept;
-::std::size_t cxxbridge1$ComponentValue$operator$sizeof() noexcept;
-::std::size_t cxxbridge1$ComponentValue$operator$alignof() noexcept;
+void gcs$ffi$cxxbridge1$create_component_field_definition(::rust::String *name, ::gcs::ffi::VariantType *field_type, ::gcs::ffi::ComponentFieldDefinition *return$) noexcept;
+::std::size_t gcs$ffi$cxxbridge1$ComponentData$operator$sizeof() noexcept;
+::std::size_t gcs$ffi$cxxbridge1$ComponentData$operator$alignof() noexcept;
+::std::size_t gcs$ffi$cxxbridge1$ComponentValue$operator$sizeof() noexcept;
+::std::size_t gcs$ffi$cxxbridge1$ComponentValue$operator$alignof() noexcept;
 
-const ::ComponentValue *cxxbridge1$ComponentData$get_field(const ::ComponentData &self, ::rust::String *field) noexcept;
+const ::gcs::ffi::ComponentValue *gcs$ffi$cxxbridge1$ComponentData$get_field(const ::gcs::ffi::ComponentData &self, ::rust::String *field) noexcept;
 
-void cxxbridge1$ComponentData$set_field(::ComponentData &self, ::rust::String *field, const ::ComponentValue &value) noexcept;
+void gcs$ffi$cxxbridge1$ComponentData$set_field(::gcs::ffi::ComponentData &self, ::rust::String *field, const ::gcs::ffi::ComponentValue &value) noexcept;
 
-const ::Variant *cxxbridge1$variant_from_component_value(const ::ComponentValue &value) noexcept;
+const ::gcs::ffi::Variant *gcs$ffi$cxxbridge1$variant_from_component_value(const ::gcs::ffi::ComponentValue &value) noexcept;
 
-const ::Variant *cxxbridge1$empty_variant() noexcept {
-  const ::Variant &(*empty_variant$)() = ::empty_variant;
+const ::gcs::ffi::Variant *gcs$ffi$cxxbridge1$empty_variant() noexcept {
+  const ::gcs::ffi::Variant &(*empty_variant$)() = ::gcs::ffi::empty_variant;
   return &empty_variant$();
 }
 
-const ::Variant *cxxbridge1$variant_from_i64(::std::int64_t value) noexcept {
-  const ::Variant &(*variant_from_i64$)(::std::int64_t) = ::variant_from_i64;
+const ::gcs::ffi::Variant *gcs$ffi$cxxbridge1$variant_from_i64(::std::int64_t value) noexcept {
+  const ::gcs::ffi::Variant &(*variant_from_i64$)(::std::int64_t) = ::gcs::ffi::variant_from_i64;
   return &variant_from_i64$(value);
 }
 
-const ::Variant *cxxbridge1$variant_from_string(const ::rust::String *value) noexcept {
-  const ::Variant &(*variant_from_string$)(::rust::String) = ::variant_from_string;
+const ::gcs::ffi::Variant *gcs$ffi$cxxbridge1$variant_from_string(const ::rust::String *value) noexcept {
+  const ::gcs::ffi::Variant &(*variant_from_string$)(::rust::String) = ::gcs::ffi::variant_from_string;
   return &variant_from_string$(::rust::String(::rust::unsafe_bitcopy, *value));
 }
 
-const ::Variant *cxxbridge1$variant_from_bool(bool value) noexcept {
-  const ::Variant &(*variant_from_bool$)(bool) = ::variant_from_bool;
+const ::gcs::ffi::Variant *gcs$ffi$cxxbridge1$variant_from_bool(bool value) noexcept {
+  const ::gcs::ffi::Variant &(*variant_from_bool$)(bool) = ::gcs::ffi::variant_from_bool;
   return &variant_from_bool$(value);
 }
 
-const ::Variant *cxxbridge1$variant_from_f64(double value) noexcept {
-  const ::Variant &(*variant_from_f64$)(double) = ::variant_from_f64;
+const ::gcs::ffi::Variant *gcs$ffi$cxxbridge1$variant_from_f64(double value) noexcept {
+  const ::gcs::ffi::Variant &(*variant_from_f64$)(double) = ::gcs::ffi::variant_from_f64;
   return &variant_from_f64$(value);
 }
 } // extern "C"
+} // namespace ffi
+} // namespace gcs
 
 namespace std {
-template <> struct hash<::ComponentFieldDefinition> {
-  ::std::size_t operator()(const ::ComponentFieldDefinition &self) const noexcept {
-    return ::cxxbridge1$ComponentFieldDefinition$operator$hash(self);
+template <> struct hash<::gcs::ffi::ComponentFieldDefinition> {
+  ::std::size_t operator()(const ::gcs::ffi::ComponentFieldDefinition &self) const noexcept {
+    return ::gcs::ffi::gcs$ffi$cxxbridge1$ComponentFieldDefinition$operator$hash(self);
   }
 };
 } // namespace std
 
+namespace gcs {
+namespace ffi {
 bool ComponentFieldDefinition::operator==(const ComponentFieldDefinition &rhs) const noexcept {
-  return cxxbridge1$ComponentFieldDefinition$operator$eq(*this, rhs);
+  return gcs$ffi$cxxbridge1$ComponentFieldDefinition$operator$eq(*this, rhs);
 }
 
 bool ComponentFieldDefinition::operator!=(const ComponentFieldDefinition &rhs) const noexcept {
   return !(*this == rhs);
 }
 
-::ComponentFieldDefinition create_component_field_definition(::rust::String name, ::VariantType field_type) noexcept {
-  ::rust::ManuallyDrop<::VariantType> field_type$(::std::move(field_type));
-  ::rust::MaybeUninit<::ComponentFieldDefinition> return$;
-  cxxbridge1$create_component_field_definition(&name, &field_type$.value, &return$.value);
+::gcs::ffi::ComponentFieldDefinition create_component_field_definition(::rust::String name, ::gcs::ffi::VariantType field_type) noexcept {
+  ::rust::ManuallyDrop<::gcs::ffi::VariantType> field_type$(::std::move(field_type));
+  ::rust::MaybeUninit<::gcs::ffi::ComponentFieldDefinition> return$;
+  gcs$ffi$cxxbridge1$create_component_field_definition(&name, &field_type$.value, &return$.value);
   return ::std::move(return$.value);
 }
 
 ::std::size_t ComponentData::layout::size() noexcept {
-  return cxxbridge1$ComponentData$operator$sizeof();
+  return gcs$ffi$cxxbridge1$ComponentData$operator$sizeof();
 }
 
 ::std::size_t ComponentData::layout::align() noexcept {
-  return cxxbridge1$ComponentData$operator$alignof();
+  return gcs$ffi$cxxbridge1$ComponentData$operator$alignof();
 }
 
 ::std::size_t ComponentValue::layout::size() noexcept {
-  return cxxbridge1$ComponentValue$operator$sizeof();
+  return gcs$ffi$cxxbridge1$ComponentValue$operator$sizeof();
 }
 
 ::std::size_t ComponentValue::layout::align() noexcept {
-  return cxxbridge1$ComponentValue$operator$alignof();
+  return gcs$ffi$cxxbridge1$ComponentValue$operator$alignof();
 }
 
-const ::ComponentValue &ComponentData::get_field(::rust::String field) const noexcept {
-  return *cxxbridge1$ComponentData$get_field(*this, &field);
+const ::gcs::ffi::ComponentValue &ComponentData::get_field(::rust::String field) const noexcept {
+  return *gcs$ffi$cxxbridge1$ComponentData$get_field(*this, &field);
 }
 
-void ComponentData::set_field(::rust::String field, const ::ComponentValue &value) noexcept {
-  cxxbridge1$ComponentData$set_field(*this, &field, value);
+void ComponentData::set_field(::rust::String field, const ::gcs::ffi::ComponentValue &value) noexcept {
+  gcs$ffi$cxxbridge1$ComponentData$set_field(*this, &field, value);
 }
 
-const ::Variant &variant_from_component_value(const ::ComponentValue &value) noexcept {
-  return *cxxbridge1$variant_from_component_value(value);
+const ::gcs::ffi::Variant &variant_from_component_value(const ::gcs::ffi::ComponentValue &value) noexcept {
+  return *gcs$ffi$cxxbridge1$variant_from_component_value(value);
 }
+} // namespace ffi
+} // namespace gcs

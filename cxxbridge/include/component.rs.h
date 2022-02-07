@@ -160,27 +160,33 @@ std::size_t align_of() {
 } // namespace cxxbridge1
 } // namespace rust
 
-struct ComponentFieldDefinition;
-struct ComponentData;
-struct ComponentValue;
+namespace gcs {
+  namespace ffi {
+    struct ComponentFieldDefinition;
+    struct ComponentData;
+    struct ComponentValue;
+  }
+}
 
-#ifndef CXXBRIDGE1_STRUCT_ComponentFieldDefinition
-#define CXXBRIDGE1_STRUCT_ComponentFieldDefinition
+namespace gcs {
+namespace ffi {
+#ifndef CXXBRIDGE1_STRUCT_gcs$ffi$ComponentFieldDefinition
+#define CXXBRIDGE1_STRUCT_gcs$ffi$ComponentFieldDefinition
 struct ComponentFieldDefinition final {
   ::rust::String name;
-  ::VariantType field_type;
+  ::gcs::ffi::VariantType field_type;
 
   bool operator==(const ComponentFieldDefinition &) const noexcept;
   bool operator!=(const ComponentFieldDefinition &) const noexcept;
   using IsRelocatable = ::std::true_type;
 };
-#endif // CXXBRIDGE1_STRUCT_ComponentFieldDefinition
+#endif // CXXBRIDGE1_STRUCT_gcs$ffi$ComponentFieldDefinition
 
-#ifndef CXXBRIDGE1_STRUCT_ComponentData
-#define CXXBRIDGE1_STRUCT_ComponentData
+#ifndef CXXBRIDGE1_STRUCT_gcs$ffi$ComponentData
+#define CXXBRIDGE1_STRUCT_gcs$ffi$ComponentData
 struct ComponentData final : public ::rust::Opaque {
-  const ::ComponentValue &get_field(::rust::String field) const noexcept;
-  void set_field(::rust::String field, const ::ComponentValue &value) noexcept;
+  const ::gcs::ffi::ComponentValue &get_field(::rust::String field) const noexcept;
+  void set_field(::rust::String field, const ::gcs::ffi::ComponentValue &value) noexcept;
   ~ComponentData() = delete;
 
 private:
@@ -190,10 +196,10 @@ private:
     static ::std::size_t align() noexcept;
   };
 };
-#endif // CXXBRIDGE1_STRUCT_ComponentData
+#endif // CXXBRIDGE1_STRUCT_gcs$ffi$ComponentData
 
-#ifndef CXXBRIDGE1_STRUCT_ComponentValue
-#define CXXBRIDGE1_STRUCT_ComponentValue
+#ifndef CXXBRIDGE1_STRUCT_gcs$ffi$ComponentValue
+#define CXXBRIDGE1_STRUCT_gcs$ffi$ComponentValue
 struct ComponentValue final : public ::rust::Opaque {
   ~ComponentValue() = delete;
 
@@ -204,8 +210,10 @@ private:
     static ::std::size_t align() noexcept;
   };
 };
-#endif // CXXBRIDGE1_STRUCT_ComponentValue
+#endif // CXXBRIDGE1_STRUCT_gcs$ffi$ComponentValue
 
-::ComponentFieldDefinition create_component_field_definition(::rust::String name, ::VariantType field_type) noexcept;
+::gcs::ffi::ComponentFieldDefinition create_component_field_definition(::rust::String name, ::gcs::ffi::VariantType field_type) noexcept;
 
-const ::Variant &variant_from_component_value(const ::ComponentValue &value) noexcept;
+const ::gcs::ffi::Variant &variant_from_component_value(const ::gcs::ffi::ComponentValue &value) noexcept;
+} // namespace ffi
+} // namespace gcs
