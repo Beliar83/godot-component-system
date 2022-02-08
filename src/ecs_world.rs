@@ -5,30 +5,12 @@ use std::fmt::{Display, Formatter};
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 
-use crate::component::ComponentData;
-use uuid::Uuid;
-
-use crate::component::ffi::ComponentFieldDefinition;
+use crate::component::component_data::ComponentData;
+use crate::component::component_field_definition::ffi::ComponentFieldDefinition;
 use crate::ecs_world::ffi::ComponentInfo;
 use crate::ecs_world::RegisterEntityError::AlreadyRegistered;
 use crate::ecs_world::SetComponentDataError::{ComponentNotFound, DataInUse, EntityNotFound};
-
-#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
-pub struct EntityId(uuid::Uuid);
-
-impl EntityId {
-    fn create() -> Self {
-        EntityId(Uuid::new_v4())
-    }
-}
-
-fn entity_id_from_u64_(id: u64) -> Box<EntityId> {
-    Box::new(EntityId(Uuid::from_u128(id as u128)))
-}
-
-fn create_entity_ud() -> Box<EntityId> {
-    Box::new(EntityId::create())
-}
+use crate::entity::EntityId;
 
 #[cxx::bridge(namespace = gcs::ffi)]
 pub mod ffi {
@@ -39,12 +21,10 @@ pub mod ffi {
 
     extern "Rust" {
         include!("cxx.h");
-        include!("component.rs.h");
+        include!("component_data.rs.h");
+        include!("component_field_definition.rs.h");
+        include!("entity.rs.h");
         type ECSWorld;
-
-        type EntityId;
-
-        fn entity_id_from_u64_(id: u64) -> Box<EntityId>;
 
         fn register_component(
             self: &mut ECSWorld,
@@ -71,11 +51,12 @@ pub mod ffi {
     extern "C++" {
         include!("variant.h");
 
-        type ComponentFieldDefinition = crate::component::ffi::ComponentFieldDefinition;
+        type ComponentFieldDefinition =
+            crate::component::component_field_definition::ffi::ComponentFieldDefinition;
 
         pub type Variant = crate::godot::variant::ffi::Variant;
-        #[namespace = "gcs::ffi"]
-        type ComponentData = crate::component::ComponentData;
+        type ComponentData = crate::component::component_data::ComponentData;
+        type EntityId = crate::entity::EntityId;
 
     }
 }
@@ -253,10 +234,12 @@ impl ECSWorld {
 
 #[cfg(test)]
 mod tests {
-    use crate::component::ffi::ComponentFieldDefinition;
-    use crate::component::{ComponentData, ComponentValue};
+    use crate::component::component_data::ComponentData;
+    use crate::component::component_field_definition::ffi::ComponentFieldDefinition;
+    use crate::component::component_value::ComponentValue;
+    use crate::ecs_world::ECSWorld;
     use crate::ecs_world::SetComponentDataError::{ComponentNotFound, EntityNotFound};
-    use crate::ecs_world::{ECSWorld, EntityId};
+    use crate::entity::EntityId;
     use crate::godot::variant::VariantType;
     use uuid::Uuid;
 

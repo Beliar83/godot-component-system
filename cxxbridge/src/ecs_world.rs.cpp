@@ -1,5 +1,7 @@
 #include "cxx.h"
-#include "component.rs.h"
+#include "component_data.rs.h"
+#include "component_field_definition.rs.h"
+#include "entity.rs.h"
 #include "variant.h"
 #include <algorithm>
 #include <array>
@@ -394,162 +396,6 @@ void Slice<T>::swap(Slice &rhs) noexcept {
   std::swap(*this, rhs);
 }
 #endif // CXXBRIDGE1_RUST_SLICE
-
-#ifndef CXXBRIDGE1_RUST_BOX
-#define CXXBRIDGE1_RUST_BOX
-template <typename T>
-class Box final {
-public:
-  using element_type = T;
-  using const_pointer =
-      typename std::add_pointer<typename std::add_const<T>::type>::type;
-  using pointer = typename std::add_pointer<T>::type;
-
-  Box() = delete;
-  Box(Box &&) noexcept;
-  ~Box() noexcept;
-
-  explicit Box(const T &);
-  explicit Box(T &&);
-
-  Box &operator=(Box &&) &noexcept;
-
-  const T *operator->() const noexcept;
-  const T &operator*() const noexcept;
-  T *operator->() noexcept;
-  T &operator*() noexcept;
-
-  template <typename... Fields>
-  static Box in_place(Fields &&...);
-
-  void swap(Box &) noexcept;
-
-  static Box from_raw(T *) noexcept;
-
-  T *into_raw() noexcept;
-
-  /* Deprecated */ using value_type = element_type;
-
-private:
-  class uninit;
-  class allocation;
-  Box(uninit) noexcept;
-  void drop() noexcept;
-
-  friend void swap(Box &lhs, Box &rhs) noexcept { lhs.swap(rhs); }
-
-  T *ptr;
-};
-
-template <typename T>
-class Box<T>::uninit {};
-
-template <typename T>
-class Box<T>::allocation {
-  static T *alloc() noexcept;
-  static void dealloc(T *) noexcept;
-
-public:
-  allocation() noexcept : ptr(alloc()) {}
-  ~allocation() noexcept {
-    if (this->ptr) {
-      dealloc(this->ptr);
-    }
-  }
-  T *ptr;
-};
-
-template <typename T>
-Box<T>::Box(Box &&other) noexcept : ptr(other.ptr) {
-  other.ptr = nullptr;
-}
-
-template <typename T>
-Box<T>::Box(const T &val) {
-  allocation alloc;
-  ::new (alloc.ptr) T(val);
-  this->ptr = alloc.ptr;
-  alloc.ptr = nullptr;
-}
-
-template <typename T>
-Box<T>::Box(T &&val) {
-  allocation alloc;
-  ::new (alloc.ptr) T(std::move(val));
-  this->ptr = alloc.ptr;
-  alloc.ptr = nullptr;
-}
-
-template <typename T>
-Box<T>::~Box() noexcept {
-  if (this->ptr) {
-    this->drop();
-  }
-}
-
-template <typename T>
-Box<T> &Box<T>::operator=(Box &&other) &noexcept {
-  if (this->ptr) {
-    this->drop();
-  }
-  this->ptr = other.ptr;
-  other.ptr = nullptr;
-  return *this;
-}
-
-template <typename T>
-const T *Box<T>::operator->() const noexcept {
-  return this->ptr;
-}
-
-template <typename T>
-const T &Box<T>::operator*() const noexcept {
-  return *this->ptr;
-}
-
-template <typename T>
-T *Box<T>::operator->() noexcept {
-  return this->ptr;
-}
-
-template <typename T>
-T &Box<T>::operator*() noexcept {
-  return *this->ptr;
-}
-
-template <typename T>
-template <typename... Fields>
-Box<T> Box<T>::in_place(Fields &&...fields) {
-  allocation alloc;
-  auto ptr = alloc.ptr;
-  ::new (ptr) T{std::forward<Fields>(fields)...};
-  alloc.ptr = nullptr;
-  return from_raw(ptr);
-}
-
-template <typename T>
-void Box<T>::swap(Box &rhs) noexcept {
-  using std::swap;
-  swap(this->ptr, rhs.ptr);
-}
-
-template <typename T>
-Box<T> Box<T>::from_raw(T *raw) noexcept {
-  Box box = uninit{};
-  box.ptr = raw;
-  return box;
-}
-
-template <typename T>
-T *Box<T>::into_raw() noexcept {
-  T *raw = this->ptr;
-  this->ptr = nullptr;
-  return raw;
-}
-
-template <typename T>
-Box<T>::Box(uninit) noexcept {}
-#endif // CXXBRIDGE1_RUST_BOX
 
 #ifndef CXXBRIDGE1_RUST_BITCOPY_T
 #define CXXBRIDGE1_RUST_BITCOPY_T
@@ -985,7 +831,6 @@ namespace gcs {
   namespace ffi {
     struct ComponentInfo;
     struct ECSWorld;
-    struct EntityId;
   }
 }
 
@@ -1019,20 +864,6 @@ private:
   };
 };
 #endif // CXXBRIDGE1_STRUCT_gcs$ffi$ECSWorld
-
-#ifndef CXXBRIDGE1_STRUCT_gcs$ffi$EntityId
-#define CXXBRIDGE1_STRUCT_gcs$ffi$EntityId
-struct EntityId final : public ::rust::Opaque {
-  ~EntityId() = delete;
-
-private:
-  friend ::rust::layout;
-  struct layout {
-    static ::std::size_t size() noexcept;
-    static ::std::size_t align() noexcept;
-  };
-};
-#endif // CXXBRIDGE1_STRUCT_gcs$ffi$EntityId
 } // namespace ffi
 } // namespace gcs
 
@@ -1047,10 +878,6 @@ bool gcs$ffi$cxxbridge1$ComponentInfo$operator$eq(const ComponentInfo &, const C
 ::std::size_t gcs$ffi$cxxbridge1$ComponentInfo$operator$hash(const ComponentInfo &) noexcept;
 ::std::size_t gcs$ffi$cxxbridge1$ECSWorld$operator$sizeof() noexcept;
 ::std::size_t gcs$ffi$cxxbridge1$ECSWorld$operator$alignof() noexcept;
-::std::size_t gcs$ffi$cxxbridge1$EntityId$operator$sizeof() noexcept;
-::std::size_t gcs$ffi$cxxbridge1$EntityId$operator$alignof() noexcept;
-
-::gcs::ffi::EntityId *gcs$ffi$cxxbridge1$entity_id_from_u64_(::std::uint64_t id) noexcept;
 
 ::rust::repr::PtrLen gcs$ffi$cxxbridge1$ECSWorld$register_component(::gcs::ffi::ECSWorld &self, ::rust::String *name, ::rust::Vec<::gcs::ffi::ComponentFieldDefinition> *fields, ::gcs::ffi::ComponentInfo *return$) noexcept;
 
@@ -1089,18 +916,6 @@ bool ComponentInfo::operator!=(const ComponentInfo &rhs) const noexcept {
   return gcs$ffi$cxxbridge1$ECSWorld$operator$alignof();
 }
 
-::std::size_t EntityId::layout::size() noexcept {
-  return gcs$ffi$cxxbridge1$EntityId$operator$sizeof();
-}
-
-::std::size_t EntityId::layout::align() noexcept {
-  return gcs$ffi$cxxbridge1$EntityId$operator$alignof();
-}
-
-::rust::Box<::gcs::ffi::EntityId> entity_id_from_u64_(::std::uint64_t id) noexcept {
-  return ::rust::Box<::gcs::ffi::EntityId>::from_raw(gcs$ffi$cxxbridge1$entity_id_from_u64_(id));
-}
-
 ::gcs::ffi::ComponentInfo ECSWorld::register_component(::rust::String name, ::rust::Vec<::gcs::ffi::ComponentFieldDefinition> fields) {
   ::rust::ManuallyDrop<::rust::Vec<::gcs::ffi::ComponentFieldDefinition>> fields$(::std::move(fields));
   ::rust::MaybeUninit<::gcs::ffi::ComponentInfo> return$;
@@ -1130,26 +945,3 @@ bool ECSWorld::is_component_added_to_entity(const ::gcs::ffi::EntityId &entity_i
 }
 } // namespace ffi
 } // namespace gcs
-
-extern "C" {
-::gcs::ffi::EntityId *cxxbridge1$box$gcs$ffi$EntityId$alloc() noexcept;
-void cxxbridge1$box$gcs$ffi$EntityId$dealloc(::gcs::ffi::EntityId *) noexcept;
-void cxxbridge1$box$gcs$ffi$EntityId$drop(::rust::Box<::gcs::ffi::EntityId> *ptr) noexcept;
-} // extern "C"
-
-namespace rust {
-inline namespace cxxbridge1 {
-template <>
-::gcs::ffi::EntityId *Box<::gcs::ffi::EntityId>::allocation::alloc() noexcept {
-  return cxxbridge1$box$gcs$ffi$EntityId$alloc();
-}
-template <>
-void Box<::gcs::ffi::EntityId>::allocation::dealloc(::gcs::ffi::EntityId *ptr) noexcept {
-  cxxbridge1$box$gcs$ffi$EntityId$dealloc(ptr);
-}
-template <>
-void Box<::gcs::ffi::EntityId>::drop() noexcept {
-  cxxbridge1$box$gcs$ffi$EntityId$drop(this);
-}
-} // namespace cxxbridge1
-} // namespace rust
