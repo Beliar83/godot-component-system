@@ -2,9 +2,11 @@ use crate::component::ffi::{
     empty_variant, variant_from_bool, variant_from_f64, variant_from_i64, variant_from_string,
 };
 use crate::ecs_world::EntityId;
-use crate::godot::variant::ffi::Variant;
 use crate::godot::variant::ffi::VariantType;
-use cxx::{type_id, ExternType};
+use crate::godot::variant::ffi::{
+    variant_as_bool, variant_as_f64, variant_as_i64, variant_as_string, Variant,
+};
+use cxx::{type_id, v, ExternType};
 use std::collections::HashMap;
 
 #[cxx::bridge(namespace = gcs::ffi)]
@@ -28,6 +30,7 @@ pub mod ffi {
         fn set_field(self: &mut ComponentData, field: String, value: &ComponentValue);
 
         fn variant_from_component_value(value: &ComponentValue) -> &'static Variant;
+        fn component_value_from_variant(value: &Variant) -> Box<ComponentValue>;
     }
 
     unsafe extern "C++" {
@@ -106,6 +109,93 @@ fn variant_from_component_value(value: &ComponentValue) -> &'static Variant {
             ComponentValue::Real(value) => variant_from_f64(*value),
         }
     }
+    #[cfg(test)]
+    unimplemented!()
+}
+
+fn component_value_from_variant(value: &Variant) -> Box<ComponentValue> {
+    #[cfg(not(test))]
+    {
+        let variant_type: VariantType = value.get_type();
+
+        match variant_type {
+            VariantType::NIL => Box::new(ComponentValue::Nil),
+            VariantType::BOOL => Box::new(ComponentValue::Bool(variant_as_bool(value))),
+            VariantType::INT => Box::new(ComponentValue::Int(variant_as_i64(value))),
+            VariantType::REAL => Box::new(ComponentValue::Real(variant_as_f64(value))),
+            VariantType::STRING => Box::new(ComponentValue::String(variant_as_string(value))),
+            VariantType::VECTOR2 => {
+                unimplemented!()
+            }
+            VariantType::RECT2 => {
+                unimplemented!()
+            }
+            VariantType::VECTOR3 => {
+                unimplemented!()
+            }
+            VariantType::TRANSFORM2D => {
+                unimplemented!()
+            }
+            VariantType::PLANE => {
+                unimplemented!()
+            }
+            VariantType::QUAT => {
+                unimplemented!()
+            }
+            VariantType::AABB => {
+                unimplemented!()
+            }
+            VariantType::BASIS => {
+                unimplemented!()
+            }
+            VariantType::TRANSFORM => {
+                unimplemented!()
+            }
+            VariantType::COLOR => {
+                unimplemented!()
+            }
+            VariantType::NODE_PATH => {
+                unimplemented!()
+            }
+            VariantType::_RID => {
+                unimplemented!()
+            }
+            VariantType::OBJECT => {
+                unimplemented!()
+            }
+            VariantType::DICTIONARY => {
+                unimplemented!()
+            }
+            VariantType::ARRAY => {
+                unimplemented!()
+            }
+            VariantType::POOL_BYTE_ARRAY => {
+                unimplemented!()
+            }
+            VariantType::POOL_INT_ARRAY => {
+                unimplemented!()
+            }
+            VariantType::POOL_REAL_ARRAY => {
+                unimplemented!()
+            }
+            VariantType::POOL_STRING_ARRAY => {
+                unimplemented!()
+            }
+            VariantType::POOL_VECTOR2_ARRAY => {
+                unimplemented!()
+            }
+            VariantType::POOL_VECTOR3_ARRAY => {
+                unimplemented!()
+            }
+            VariantType::POOL_COLOR_ARRAY => {
+                unimplemented!()
+            }
+            VariantType::VARIANT_MAX => {
+                unimplemented!()
+            }
+        }
+    }
+
     #[cfg(test)]
     unimplemented!()
 }

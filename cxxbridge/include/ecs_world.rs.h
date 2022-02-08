@@ -879,7 +879,7 @@ namespace gcs {
   namespace ffi {
     struct ComponentInfo;
     struct ECSWorld;
-    struct Uuid;
+    struct EntityId;
   }
 }
 
@@ -900,8 +900,8 @@ struct ComponentInfo final {
 #define CXXBRIDGE1_STRUCT_gcs$ffi$ECSWorld
 struct ECSWorld final : public ::rust::Opaque {
   ::gcs::ffi::ComponentInfo register_component(::rust::String name, ::rust::Vec<::gcs::ffi::ComponentFieldDefinition> fields);
-  ::rust::Box<::gcs::ffi::Uuid> register_entity(::std::uint64_t id);
-  void set_component_data(const ::gcs::ffi::Uuid &entity_id, ::rust::String component, const ::gcs::ffi::ComponentData &data);
+  void register_entity(const ::gcs::ffi::EntityId &id);
+  void set_component_data(const ::gcs::ffi::EntityId &entity_id, ::rust::String component, const ::gcs::ffi::ComponentData &data);
   ~ECSWorld() = delete;
 
 private:
@@ -913,10 +913,10 @@ private:
 };
 #endif // CXXBRIDGE1_STRUCT_gcs$ffi$ECSWorld
 
-#ifndef CXXBRIDGE1_STRUCT_gcs$ffi$Uuid
-#define CXXBRIDGE1_STRUCT_gcs$ffi$Uuid
-struct Uuid final : public ::rust::Opaque {
-  ~Uuid() = delete;
+#ifndef CXXBRIDGE1_STRUCT_gcs$ffi$EntityId
+#define CXXBRIDGE1_STRUCT_gcs$ffi$EntityId
+struct EntityId final : public ::rust::Opaque {
+  ~EntityId() = delete;
 
 private:
   friend ::rust::layout;
@@ -925,6 +925,8 @@ private:
     static ::std::size_t align() noexcept;
   };
 };
-#endif // CXXBRIDGE1_STRUCT_gcs$ffi$Uuid
+#endif // CXXBRIDGE1_STRUCT_gcs$ffi$EntityId
+
+::rust::Box<::gcs::ffi::EntityId> entity_id_from_u64_(::std::uint64_t id) noexcept;
 } // namespace ffi
 } // namespace gcs

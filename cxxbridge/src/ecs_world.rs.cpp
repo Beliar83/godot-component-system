@@ -985,7 +985,7 @@ namespace gcs {
   namespace ffi {
     struct ComponentInfo;
     struct ECSWorld;
-    struct Uuid;
+    struct EntityId;
   }
 }
 
@@ -1006,8 +1006,8 @@ struct ComponentInfo final {
 #define CXXBRIDGE1_STRUCT_gcs$ffi$ECSWorld
 struct ECSWorld final : public ::rust::Opaque {
   ::gcs::ffi::ComponentInfo register_component(::rust::String name, ::rust::Vec<::gcs::ffi::ComponentFieldDefinition> fields);
-  ::rust::Box<::gcs::ffi::Uuid> register_entity(::std::uint64_t id);
-  void set_component_data(const ::gcs::ffi::Uuid &entity_id, ::rust::String component, const ::gcs::ffi::ComponentData &data);
+  void register_entity(const ::gcs::ffi::EntityId &id);
+  void set_component_data(const ::gcs::ffi::EntityId &entity_id, ::rust::String component, const ::gcs::ffi::ComponentData &data);
   ~ECSWorld() = delete;
 
 private:
@@ -1019,10 +1019,10 @@ private:
 };
 #endif // CXXBRIDGE1_STRUCT_gcs$ffi$ECSWorld
 
-#ifndef CXXBRIDGE1_STRUCT_gcs$ffi$Uuid
-#define CXXBRIDGE1_STRUCT_gcs$ffi$Uuid
-struct Uuid final : public ::rust::Opaque {
-  ~Uuid() = delete;
+#ifndef CXXBRIDGE1_STRUCT_gcs$ffi$EntityId
+#define CXXBRIDGE1_STRUCT_gcs$ffi$EntityId
+struct EntityId final : public ::rust::Opaque {
+  ~EntityId() = delete;
 
 private:
   friend ::rust::layout;
@@ -1031,7 +1031,7 @@ private:
     static ::std::size_t align() noexcept;
   };
 };
-#endif // CXXBRIDGE1_STRUCT_gcs$ffi$Uuid
+#endif // CXXBRIDGE1_STRUCT_gcs$ffi$EntityId
 } // namespace ffi
 } // namespace gcs
 
@@ -1046,14 +1046,16 @@ bool gcs$ffi$cxxbridge1$ComponentInfo$operator$eq(const ComponentInfo &, const C
 ::std::size_t gcs$ffi$cxxbridge1$ComponentInfo$operator$hash(const ComponentInfo &) noexcept;
 ::std::size_t gcs$ffi$cxxbridge1$ECSWorld$operator$sizeof() noexcept;
 ::std::size_t gcs$ffi$cxxbridge1$ECSWorld$operator$alignof() noexcept;
-::std::size_t gcs$ffi$cxxbridge1$Uuid$operator$sizeof() noexcept;
-::std::size_t gcs$ffi$cxxbridge1$Uuid$operator$alignof() noexcept;
+::std::size_t gcs$ffi$cxxbridge1$EntityId$operator$sizeof() noexcept;
+::std::size_t gcs$ffi$cxxbridge1$EntityId$operator$alignof() noexcept;
+
+::gcs::ffi::EntityId *gcs$ffi$cxxbridge1$entity_id_from_u64_(::std::uint64_t id) noexcept;
 
 ::rust::repr::PtrLen gcs$ffi$cxxbridge1$ECSWorld$register_component(::gcs::ffi::ECSWorld &self, ::rust::String *name, ::rust::Vec<::gcs::ffi::ComponentFieldDefinition> *fields, ::gcs::ffi::ComponentInfo *return$) noexcept;
 
-::rust::repr::PtrLen gcs$ffi$cxxbridge1$ECSWorld$register_entity(::gcs::ffi::ECSWorld &self, ::std::uint64_t id, ::rust::Box<::gcs::ffi::Uuid> *return$) noexcept;
+::rust::repr::PtrLen gcs$ffi$cxxbridge1$ECSWorld$register_entity(::gcs::ffi::ECSWorld &self, const ::gcs::ffi::EntityId &id) noexcept;
 
-::rust::repr::PtrLen gcs$ffi$cxxbridge1$ECSWorld$set_component_data(::gcs::ffi::ECSWorld &self, const ::gcs::ffi::Uuid &entity_id, ::rust::String *component, const ::gcs::ffi::ComponentData &data) noexcept;
+::rust::repr::PtrLen gcs$ffi$cxxbridge1$ECSWorld$set_component_data(::gcs::ffi::ECSWorld &self, const ::gcs::ffi::EntityId &entity_id, ::rust::String *component, const ::gcs::ffi::ComponentData &data) noexcept;
 } // extern "C"
 } // namespace ffi
 } // namespace gcs
@@ -1084,12 +1086,16 @@ bool ComponentInfo::operator!=(const ComponentInfo &rhs) const noexcept {
   return gcs$ffi$cxxbridge1$ECSWorld$operator$alignof();
 }
 
-::std::size_t Uuid::layout::size() noexcept {
-  return gcs$ffi$cxxbridge1$Uuid$operator$sizeof();
+::std::size_t EntityId::layout::size() noexcept {
+  return gcs$ffi$cxxbridge1$EntityId$operator$sizeof();
 }
 
-::std::size_t Uuid::layout::align() noexcept {
-  return gcs$ffi$cxxbridge1$Uuid$operator$alignof();
+::std::size_t EntityId::layout::align() noexcept {
+  return gcs$ffi$cxxbridge1$EntityId$operator$alignof();
+}
+
+::rust::Box<::gcs::ffi::EntityId> entity_id_from_u64_(::std::uint64_t id) noexcept {
+  return ::rust::Box<::gcs::ffi::EntityId>::from_raw(gcs$ffi$cxxbridge1$entity_id_from_u64_(id));
 }
 
 ::gcs::ffi::ComponentInfo ECSWorld::register_component(::rust::String name, ::rust::Vec<::gcs::ffi::ComponentFieldDefinition> fields) {
@@ -1102,16 +1108,14 @@ bool ComponentInfo::operator!=(const ComponentInfo &rhs) const noexcept {
   return ::std::move(return$.value);
 }
 
-::rust::Box<::gcs::ffi::Uuid> ECSWorld::register_entity(::std::uint64_t id) {
-  ::rust::MaybeUninit<::rust::Box<::gcs::ffi::Uuid>> return$;
-  ::rust::repr::PtrLen error$ = gcs$ffi$cxxbridge1$ECSWorld$register_entity(*this, id, &return$.value);
+void ECSWorld::register_entity(const ::gcs::ffi::EntityId &id) {
+  ::rust::repr::PtrLen error$ = gcs$ffi$cxxbridge1$ECSWorld$register_entity(*this, id);
   if (error$.ptr) {
     throw ::rust::impl<::rust::Error>::error(error$);
   }
-  return ::std::move(return$.value);
 }
 
-void ECSWorld::set_component_data(const ::gcs::ffi::Uuid &entity_id, ::rust::String component, const ::gcs::ffi::ComponentData &data) {
+void ECSWorld::set_component_data(const ::gcs::ffi::EntityId &entity_id, ::rust::String component, const ::gcs::ffi::ComponentData &data) {
   ::rust::repr::PtrLen error$ = gcs$ffi$cxxbridge1$ECSWorld$set_component_data(*this, entity_id, &component, data);
   if (error$.ptr) {
     throw ::rust::impl<::rust::Error>::error(error$);
@@ -1121,24 +1125,24 @@ void ECSWorld::set_component_data(const ::gcs::ffi::Uuid &entity_id, ::rust::Str
 } // namespace gcs
 
 extern "C" {
-::gcs::ffi::Uuid *cxxbridge1$box$gcs$ffi$Uuid$alloc() noexcept;
-void cxxbridge1$box$gcs$ffi$Uuid$dealloc(::gcs::ffi::Uuid *) noexcept;
-void cxxbridge1$box$gcs$ffi$Uuid$drop(::rust::Box<::gcs::ffi::Uuid> *ptr) noexcept;
+::gcs::ffi::EntityId *cxxbridge1$box$gcs$ffi$EntityId$alloc() noexcept;
+void cxxbridge1$box$gcs$ffi$EntityId$dealloc(::gcs::ffi::EntityId *) noexcept;
+void cxxbridge1$box$gcs$ffi$EntityId$drop(::rust::Box<::gcs::ffi::EntityId> *ptr) noexcept;
 } // extern "C"
 
 namespace rust {
 inline namespace cxxbridge1 {
 template <>
-::gcs::ffi::Uuid *Box<::gcs::ffi::Uuid>::allocation::alloc() noexcept {
-  return cxxbridge1$box$gcs$ffi$Uuid$alloc();
+::gcs::ffi::EntityId *Box<::gcs::ffi::EntityId>::allocation::alloc() noexcept {
+  return cxxbridge1$box$gcs$ffi$EntityId$alloc();
 }
 template <>
-void Box<::gcs::ffi::Uuid>::allocation::dealloc(::gcs::ffi::Uuid *ptr) noexcept {
-  cxxbridge1$box$gcs$ffi$Uuid$dealloc(ptr);
+void Box<::gcs::ffi::EntityId>::allocation::dealloc(::gcs::ffi::EntityId *ptr) noexcept {
+  cxxbridge1$box$gcs$ffi$EntityId$dealloc(ptr);
 }
 template <>
-void Box<::gcs::ffi::Uuid>::drop() noexcept {
-  cxxbridge1$box$gcs$ffi$Uuid$drop(this);
+void Box<::gcs::ffi::EntityId>::drop() noexcept {
+  cxxbridge1$box$gcs$ffi$EntityId$drop(this);
 }
 } // namespace cxxbridge1
 } // namespace rust

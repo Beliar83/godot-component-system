@@ -3,9 +3,12 @@
 
 VariantType <--o ComponentFieldDefinition
 ComponentFieldDefinition <--* Component
-Component <--* World
 ComponentType <--* ComponentInfo
 ComponentInfo <--* World
+ComponentValue <--* ComponentData
+ComponentData <--* World
+EntityId <--o ComponentData
+EntityId <--o World
 
 enum VariantType
 
@@ -14,22 +17,59 @@ class ComponentFieldDefinition {
     VariantType type
 }
 
-class Component {
-    set_field(String name, Variant value)
-    Variant get_field(String name)
-}
-
 class ComponentInfo {
     hash: u64
+}
+
+class ComponentData {
+    entity: EntityId
+    fields: HashMap<String, ComponentValue>
+
+    new() -> ComponentData
+    get_entity(&self) -> EntityId
+
+    get_field(&self, field: String) -> &ComponentValue
+    set_field(&mut self, field: String, value; &ComponentValue)
+}
+
+enum ComponentValue {
+    Nil
+    Int: i64
+    String: String
+    Bool: bool
+    Real: f64
+
+    default() -> ComponentValue
+}
+
+class EntityId {
+    0: Uuid
+
+    create() -> EntityId
+}
+
+enum RegisterEntityError {
+    AlreadyRegistered
+}
+
+enum SetComponentDataError {
+    EntityNotFound
+    ComponentNotFound
+    DataInUse
 }
 
 class World {
     component_definitions: HashMap<ComponentInfo, Vec<ComponentFieldDefinition>>
     component_names: HashMap<String, ComponentInfo>
-    entities: Vec<uuid>
-    components: HashMap<String, Vec<Box<dyn Component>>>
+    entities: Vec<EntityId>
+    components: HashMap<String, Vec<Rc<RefCell<ComponentData>>>>
+    components_of_entity: HashMap<EntityId, HashMap<String, Rc<RefCell<ComponentData>>>>
 
     register_component(&mut self, name: String, fields: Vec<ComponentFieldDefinition>) -> Result<ComponentInfo, String>
+    create_entity(&mut self) -> EntityId
+    register_entity(&mut self, id: &EntityId) -> Result<(), RegisterEntityError>
+    add_component_to_entity(&mut self, entity_id: &EntityId, component: String) -> Result<(), String>
+    set_component_data(&mut self, entity_id: &EntityId, component: String, data: &ComponentData) -> Result<(), SetComponentDataError>
 }
 
 @enduml

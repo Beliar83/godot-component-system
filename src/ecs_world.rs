@@ -16,6 +16,20 @@ use crate::ecs_world::SetComponentDataError::{ComponentNotFound, DataInUse, Enti
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 pub struct EntityId(uuid::Uuid);
 
+impl EntityId {
+    fn create() -> Self {
+        EntityId(Uuid::new_v4())
+    }
+}
+
+fn entity_id_from_u64_(id: u64) -> Box<EntityId> {
+    Box::new(EntityId(Uuid::from_u128(id as u128)))
+}
+
+fn create_entity_ud() -> Box<EntityId> {
+    Box::new(EntityId::create())
+}
+
 #[cxx::bridge(namespace = gcs::ffi)]
 pub mod ffi {
     #[derive(Eq, PartialEq, Hash, Copy, Clone)]
@@ -28,8 +42,9 @@ pub mod ffi {
         include!("component.rs.h");
         type ECSWorld;
 
-        #[cxx_name = "Uuid"]
         type EntityId;
+
+        fn entity_id_from_u64_(id: u64) -> Box<EntityId>;
 
         fn register_component(
             self: &mut ECSWorld,
@@ -37,7 +52,7 @@ pub mod ffi {
             fields: Vec<ComponentFieldDefinition>,
         ) -> Result<ComponentInfo>;
 
-        fn register_entity(self: &mut ECSWorld, id: u64) -> Result<Box<EntityId>>;
+        fn register_entity(self: &mut ECSWorld, id: &EntityId) -> Result<()>;
 
         pub fn set_component_data(
             self: &mut ECSWorld,
@@ -58,6 +73,7 @@ pub mod ffi {
 
     }
 }
+
 #[derive(PartialEq, Debug)]
 pub enum SetComponentDataError {
     EntityNotFound,
@@ -134,18 +150,17 @@ impl ECSWorld {
     }
 
     pub fn create_entity(&mut self) -> EntityId {
-        let id = EntityId(Uuid::new_v4());
+        let id = EntityId::create();
         self.entities.push(id);
         id
     }
 
-    pub fn register_entity(&mut self, id: u64) -> Result<Box<EntityId>, RegisterEntityError> {
-        let id = EntityId(Uuid::from_u128(id as u128));
-        if self.entities.contains(&id) {
+    pub fn register_entity(&mut self, id: &EntityId) -> Result<(), RegisterEntityError> {
+        if self.entities.contains(id) {
             Err(AlreadyRegistered)
         } else {
-            self.entities.push(id);
-            Ok(Box::new(id))
+            self.entities.push(*id);
+            Ok(())
         }
     }
 
@@ -477,7 +492,7 @@ mod tests {
     #[test]
     pub fn set_component_checks_that_entity_exists() {
         let mut world = ECSWorld::default();
-        let entity_id = EntityId(Uuid::new_v4());
+        let entity_id = EntityId::create();
         let data = ComponentData::new(entity_id);
 
         assert_eq!(
