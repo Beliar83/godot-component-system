@@ -60,6 +60,12 @@ pub mod ffi {
             component: String,
             data: &ComponentData,
         ) -> Result<()>;
+
+        fn is_component_added_to_entity(
+            self: &ECSWorld,
+            entity_id: &EntityId,
+            component: String,
+        ) -> bool;
     }
 
     extern "C++" {
@@ -236,6 +242,12 @@ impl ECSWorld {
             }
             Ok(())
         }
+    }
+
+    pub fn is_component_added_to_entity(&self, entity_id: &EntityId, component: String) -> bool {
+        self.components_of_entity
+            .get(entity_id)
+            .map_or_else(|| false, |c| c.contains_key(&component))
     }
 }
 

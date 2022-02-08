@@ -1008,6 +1008,7 @@ struct ECSWorld final : public ::rust::Opaque {
   ::gcs::ffi::ComponentInfo register_component(::rust::String name, ::rust::Vec<::gcs::ffi::ComponentFieldDefinition> fields);
   void register_entity(const ::gcs::ffi::EntityId &id);
   void set_component_data(const ::gcs::ffi::EntityId &entity_id, ::rust::String component, const ::gcs::ffi::ComponentData &data);
+  bool is_component_added_to_entity(const ::gcs::ffi::EntityId &entity_id, ::rust::String component) const noexcept;
   ~ECSWorld() = delete;
 
 private:
@@ -1056,6 +1057,8 @@ bool gcs$ffi$cxxbridge1$ComponentInfo$operator$eq(const ComponentInfo &, const C
 ::rust::repr::PtrLen gcs$ffi$cxxbridge1$ECSWorld$register_entity(::gcs::ffi::ECSWorld &self, const ::gcs::ffi::EntityId &id) noexcept;
 
 ::rust::repr::PtrLen gcs$ffi$cxxbridge1$ECSWorld$set_component_data(::gcs::ffi::ECSWorld &self, const ::gcs::ffi::EntityId &entity_id, ::rust::String *component, const ::gcs::ffi::ComponentData &data) noexcept;
+
+bool gcs$ffi$cxxbridge1$ECSWorld$is_component_added_to_entity(const ::gcs::ffi::ECSWorld &self, const ::gcs::ffi::EntityId &entity_id, ::rust::String *component) noexcept;
 } // extern "C"
 } // namespace ffi
 } // namespace gcs
@@ -1120,6 +1123,10 @@ void ECSWorld::set_component_data(const ::gcs::ffi::EntityId &entity_id, ::rust:
   if (error$.ptr) {
     throw ::rust::impl<::rust::Error>::error(error$);
   }
+}
+
+bool ECSWorld::is_component_added_to_entity(const ::gcs::ffi::EntityId &entity_id, ::rust::String component) const noexcept {
+  return gcs$ffi$cxxbridge1$ECSWorld$is_component_added_to_entity(*this, entity_id, &component);
 }
 } // namespace ffi
 } // namespace gcs

@@ -902,6 +902,7 @@ struct ECSWorld final : public ::rust::Opaque {
   ::gcs::ffi::ComponentInfo register_component(::rust::String name, ::rust::Vec<::gcs::ffi::ComponentFieldDefinition> fields);
   void register_entity(const ::gcs::ffi::EntityId &id);
   void set_component_data(const ::gcs::ffi::EntityId &entity_id, ::rust::String component, const ::gcs::ffi::ComponentData &data);
+  bool is_component_added_to_entity(const ::gcs::ffi::EntityId &entity_id, ::rust::String component) const noexcept;
   ~ECSWorld() = delete;
 
 private:
