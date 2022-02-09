@@ -6,7 +6,8 @@ use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 
 use crate::component::component_data::ComponentData;
-use crate::component::component_field_definition::ffi::ComponentFieldDefinition;
+use crate::component::component_definition::ffi::ComponentFieldDefinition;
+use crate::component::component_definition::ComponentDefinition;
 use crate::ecs_world::ffi::ComponentInfo;
 use crate::ecs_world::RegisterEntityError::AlreadyRegistered;
 use crate::ecs_world::SetComponentDataError::{ComponentNotFound, DataInUse, EntityNotFound};
@@ -14,6 +15,7 @@ use crate::entity::EntityId;
 
 #[cxx::bridge(namespace = gcs::ffi)]
 pub mod ffi {
+
     #[derive(Eq, PartialEq, Hash, Copy, Clone)]
     pub struct ComponentInfo {
         pub hash: u64,
@@ -22,14 +24,14 @@ pub mod ffi {
     extern "Rust" {
         include!("cxx.h");
         include!("component_data.rs.h");
-        include!("component_field_definition.rs.h");
+        include!("component_definition.rs.h");
         include!("entity.rs.h");
         type ECSWorld;
 
         fn register_component(
             self: &mut ECSWorld,
             name: String,
-            fields: Vec<ComponentFieldDefinition>,
+            fields: &ComponentDefinition,
         ) -> Result<ComponentInfo>;
 
         fn register_entity(self: &mut ECSWorld, id: &EntityId) -> Result<()>;
@@ -46,13 +48,16 @@ pub mod ffi {
             entity_id: &EntityId,
             component: String,
         ) -> bool;
+
+        pub fn create_ecs_world() -> Box<ECSWorld>;
     }
 
     extern "C++" {
         include!("variant.h");
 
         type ComponentFieldDefinition =
-            crate::component::component_field_definition::ffi::ComponentFieldDefinition;
+            crate::component::component_definition::ffi::ComponentFieldDefinition;
+        type ComponentDefinition = crate::component::component_definition::ComponentDefinition;
 
         pub type Variant = crate::godot::variant::ffi::Variant;
         type ComponentData = crate::component::component_data::ComponentData;
@@ -101,21 +106,25 @@ impl Display for RegisterEntityError {
 
 #[derive(Default)]
 pub struct ECSWorld {
-    component_definitions: HashMap<ComponentInfo, Vec<ComponentFieldDefinition>>,
+    component_definitions: HashMap<ComponentInfo, ComponentDefinition>,
     component_names: HashMap<String, ComponentInfo>,
     entities: Vec<EntityId>,
     components: HashMap<String, Vec<Rc<RefCell<ComponentData>>>>,
     components_of_entity: HashMap<EntityId, HashMap<String, Rc<RefCell<ComponentData>>>>,
 }
 
+pub fn create_ecs_world() -> Box<ECSWorld> {
+    Box::new(ECSWorld::default())
+}
+
 impl ECSWorld {
     pub fn register_component(
         &mut self,
         name: String,
-        fields: Vec<ComponentFieldDefinition>,
+        component_definition: &ComponentDefinition,
     ) -> Result<ComponentInfo, String> {
         let mut hasher = DefaultHasher::default();
-        fields.hash(&mut hasher);
+        component_definition.hash(&mut hasher);
         name.hash(&mut hasher);
 
         if let std::collections::hash_map::Entry::Vacant(entry) =
@@ -124,7 +133,9 @@ impl ECSWorld {
             let info = ComponentInfo {
                 hash: hasher.finish(),
             };
-            self.component_definitions.entry(info).or_insert(fields);
+            self.component_definitions
+                .entry(info)
+                .or_insert(component_definition.clone());
             entry.insert(info);
             self.components.insert(name.clone(), Vec::new());
             Result::Ok(info)
@@ -217,7 +228,7 @@ impl ECSWorld {
                 .get(component_information)
                 .unwrap();
 
-            for component_field in component_fields {
+            for component_field in &component_fields.fields {
                 let new_data = data.get_field(component_field.name.clone());
                 stored_data.set_field(component_field.name.clone(), &new_data.clone());
             }
@@ -235,7 +246,8 @@ impl ECSWorld {
 #[cfg(test)]
 mod tests {
     use crate::component::component_data::ComponentData;
-    use crate::component::component_field_definition::ffi::ComponentFieldDefinition;
+    use crate::component::component_definition::ffi::ComponentFieldDefinition;
+    use crate::component::component_definition::ComponentDefinition;
     use crate::component::component_value::ComponentValue;
     use crate::ecs_world::ECSWorld;
     use crate::ecs_world::SetComponentDataError::{ComponentNotFound, EntityNotFound};
@@ -246,13 +258,14 @@ mod tests {
     #[test]
     fn register_component_adds_new_component_and_creates_a_hash() {
         let mut world = ECSWorld::default();
-        let definition = vec![ComponentFieldDefinition::new(
-            "Field".to_string(),
-            VariantType::NIL,
-        )];
+        let mut component_definition = ComponentDefinition::default();
+
+        let field_definition = ComponentFieldDefinition::new("Field".to_string(), VariantType::NIL);
+
+        component_definition.add_field(field_definition);
 
         let component_name = "Test";
-        let result = world.register_component(component_name.to_string(), definition.clone());
+        let result = world.register_component(component_name.to_string(), &component_definition);
         assert!(result.is_ok(), "register_component should have returned Ok");
 
         let returned_info = result.unwrap();
@@ -264,7 +277,7 @@ mod tests {
         );
         let stored_definition = world.component_definitions.get(&returned_info).unwrap();
         assert_eq!(
-            definition, *stored_definition,
+            component_definition, *stored_definition,
             "Stored definition should be the same as the one added"
         );
 
@@ -285,12 +298,15 @@ mod tests {
             "A entry for the new component in components should have been added"
         );
 
-        let definition_2 = vec![ComponentFieldDefinition::new(
-            "Field".to_string(),
-            VariantType::INT,
-        )];
+        let field_definition_2 =
+            ComponentFieldDefinition::new("Field".to_string(), VariantType::INT);
 
-        let result = world.register_component(format!("{}_", component_name), definition_2);
+        let mut component_definition_2 = ComponentDefinition::default();
+
+        component_definition_2.add_field(field_definition_2);
+
+        let result =
+            world.register_component(format!("{}_", component_name), &component_definition_2);
         assert!(result.is_ok(), "Should have added a new component");
 
         let info_2 = result.unwrap();
@@ -304,20 +320,21 @@ mod tests {
     pub fn register_component_does_not_allow_adding_of_a_component_with_a_name_that_already_exists()
     {
         let mut world = ECSWorld::default();
-        let definition = vec![ComponentFieldDefinition::new(
-            "Field".to_string(),
-            VariantType::NIL,
-        )];
+        let field_definition = ComponentFieldDefinition::new("Field".to_string(), VariantType::NIL);
 
-        let definition_2 = vec![ComponentFieldDefinition::new(
-            "Field".to_string(),
-            VariantType::INT,
-        )];
+        let mut component_definition = ComponentDefinition::default();
+        component_definition.add_field(field_definition);
+
+        let field_definition_2 =
+            ComponentFieldDefinition::new("Field".to_string(), VariantType::INT);
+
+        let mut component_definition_2 = ComponentDefinition::default();
+        component_definition_2.add_field(field_definition_2);
 
         world
-            .register_component("Test".to_string(), definition)
+            .register_component("Test".to_string(), &component_definition)
             .unwrap();
-        let result = world.register_component("Test".to_string(), definition_2);
+        let result = world.register_component("Test".to_string(), &component_definition_2);
         assert!(result.is_err())
     }
 
@@ -325,16 +342,16 @@ mod tests {
     pub fn register_component_adds_a_component_with_an_existing_definition_under_a_different_name_with_a_unique_hash(
     ) {
         let mut world = ECSWorld::default();
-        let definition = vec![ComponentFieldDefinition::new(
-            "Field".to_string(),
-            VariantType::NIL,
-        )];
+        let field_definition = ComponentFieldDefinition::new("Field".to_string(), VariantType::NIL);
+
+        let mut component_definition = ComponentDefinition::default();
+        component_definition.add_field(field_definition);
 
         let info_1 = world
-            .register_component("Test".to_string(), definition.clone())
+            .register_component("Test".to_string(), &component_definition.clone())
             .unwrap();
         let info_2 = world
-            .register_component("Test2".to_string(), definition)
+            .register_component("Test2".to_string(), &component_definition)
             .unwrap();
 
         assert_ne!(
@@ -356,13 +373,15 @@ mod tests {
     #[test]
     pub fn add_component_to_entity_adds_a_new_component_to_an_entity() {
         let mut world = ECSWorld::default();
-        let definition = vec![ComponentFieldDefinition::new(
-            "Integer".to_string(),
-            VariantType::INT,
-        )];
+        let field_definition =
+            ComponentFieldDefinition::new("Integer".to_string(), VariantType::INT);
+
+        let mut component_definition = ComponentDefinition::default();
+        component_definition.add_field(field_definition);
+
         let component_name = "Test";
         world
-            .register_component(component_name.to_string(), definition)
+            .register_component(component_name.to_string(), &component_definition)
             .unwrap();
 
         let entity_id = world.create_entity();
@@ -409,13 +428,15 @@ mod tests {
     #[test]
     pub fn add_component_to_entity_does_not_allow_adding_the_same_component_twice_to_an_entity() {
         let mut world = ECSWorld::default();
-        let definition = vec![ComponentFieldDefinition::new(
-            "Integer".to_string(),
-            VariantType::INT,
-        )];
+        let field_definition =
+            ComponentFieldDefinition::new("Integer".to_string(), VariantType::INT);
+
+        let mut component_definition = ComponentDefinition::default();
+        component_definition.add_field(field_definition);
+
         let component_name = "Test";
         world
-            .register_component(component_name.to_string(), definition)
+            .register_component(component_name.to_string(), &component_definition)
             .unwrap();
 
         let entity_id = world.create_entity();
@@ -433,13 +454,15 @@ mod tests {
     pub fn set_component_data_adds_component_data() {
         let mut world = ECSWorld::default();
         let field_name = "Integer";
-        let definition = vec![ComponentFieldDefinition::new(
-            field_name.to_string(),
-            VariantType::INT,
-        )];
+        let field_definition =
+            ComponentFieldDefinition::new(field_name.to_string(), VariantType::INT);
+
+        let mut component_definition = ComponentDefinition::default();
+        component_definition.add_field(field_definition);
+
         let component_name = "Test";
         world
-            .register_component(component_name.to_string(), definition)
+            .register_component(component_name.to_string(), &component_definition)
             .unwrap();
 
         let entity_id = world.create_entity();
@@ -511,22 +534,25 @@ mod tests {
     #[test]
     pub fn set_component_adds_component_to_entity_if_it_is_not_added() {
         let mut world = ECSWorld::default();
-        let definition = vec![ComponentFieldDefinition::new(
-            "Boolean".to_string(),
-            VariantType::BOOL,
-        )];
+        let field_definition =
+            ComponentFieldDefinition::new("Boolean".to_string(), VariantType::BOOL);
+
+        let mut component_definition = ComponentDefinition::default();
+        component_definition.add_field(field_definition);
 
         let field_name = "Integer";
-        let definition_2 = vec![ComponentFieldDefinition::new(
-            field_name.to_string(),
-            VariantType::INT,
-        )];
+        let field_definition_2 =
+            ComponentFieldDefinition::new(field_name.to_string(), VariantType::INT);
+
+        let mut component_definition_2 = ComponentDefinition::default();
+        component_definition_2.add_field(field_definition_2);
+
         let component_name = "Test_2";
         world
-            .register_component("Test_1".to_string(), definition)
+            .register_component("Test_1".to_string(), &component_definition)
             .unwrap();
         world
-            .register_component(component_name.to_string(), definition_2)
+            .register_component(component_name.to_string(), &component_definition_2)
             .unwrap();
 
         let entity_id = world.create_entity();
@@ -544,13 +570,15 @@ mod tests {
     pub fn set_component_adds_initializes_entity_components_if_not_present() {
         let mut world = ECSWorld::default();
         let field_name = "Integer";
-        let definition = vec![ComponentFieldDefinition::new(
-            field_name.to_string(),
-            VariantType::INT,
-        )];
+        let field_definition =
+            ComponentFieldDefinition::new(field_name.to_string(), VariantType::INT);
+
+        let mut component_definition = ComponentDefinition::default();
+        component_definition.add_field(field_definition);
+
         let component_name = "Test";
         world
-            .register_component(component_name.to_string(), definition)
+            .register_component(component_name.to_string(), &component_definition)
             .unwrap();
 
         let entity_id = world.create_entity();

@@ -2,19 +2,23 @@
 'https://plantuml.com/class-diagram
 
 VariantType <--o ComponentFieldDefinition
-ComponentFieldDefinition <--* Component
 ComponentType <--* ComponentInfo
 ComponentInfo <--* World
 ComponentValue <--* ComponentData
 ComponentData <--* World
 EntityId <--o ComponentData
 EntityId <--o World
+ComponentFieldDefinition <--o ComponentDefinition
 
 enum VariantType
 
 class ComponentFieldDefinition {
-    String name
-    VariantType type
+    name: String
+    type: VariantType
+}
+
+class ComponentDefinition {
+    fields: Vec<ComponentFieldDefinition>
 }
 
 class ComponentInfo {
@@ -59,13 +63,13 @@ enum SetComponentDataError {
 }
 
 class World {
-    component_definitions: HashMap<ComponentInfo, Vec<ComponentFieldDefinition>>
+    component_definitions: HashMap<ComponentInfo, Vec<ComponentDefinition>>
     component_names: HashMap<String, ComponentInfo>
     entities: Vec<EntityId>
     components: HashMap<String, Vec<Rc<RefCell<ComponentData>>>>
     components_of_entity: HashMap<EntityId, HashMap<String, Rc<RefCell<ComponentData>>>>
 
-    register_component(&mut self, name: String, fields: Vec<ComponentFieldDefinition>) -> Result<ComponentInfo, String>
+    register_component(&mut self, name: String, component_definition: ComponentDefinition) -> Result<ComponentInfo, String>
     create_entity(&mut self) -> EntityId
     register_entity(&mut self, id: &EntityId) -> Result<(), RegisterEntityError>
     add_component_to_entity(&mut self, entity_id: &EntityId, component: String) -> Result<(), String>

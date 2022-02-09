@@ -7,7 +7,7 @@ import subprocess
 cxx_files = [
     'godot/variant.rs',
     'component/component_value.rs',
-    'component/component_field_definition.rs',
+    'component/component_definition.rs',
     'component/component_data.rs',
     'ecs_world.rs',
     'entity.rs'
