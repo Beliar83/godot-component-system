@@ -1,46 +1,51 @@
 use crate::godot::variant::ffi::Variant;
+use crate::godot::variant::VariantType::Nil;
 use cxx::{type_id, ExternType};
 
-#[allow(non_camel_case_types)]
-#[allow(clippy::upper_case_acronyms)]
 #[derive(Copy, Clone, Hash, Eq, PartialEq, Debug)]
 pub enum VariantType {
-    NIL,
+    Nil,
     // atomic types
-    BOOL,
-    INT,
-    REAL,
-    STRING,
+    Bool,
+    Int,
+    Real,
+    String,
 
     // math types
-    VECTOR2, // 5
-    RECT2,
-    VECTOR3,
-    TRANSFORM2D,
-    PLANE,
-    QUAT, // 10
+    Vector2, // 5
+    Rect2,
+    Vector3,
+    Transform2D,
+    Plan,
+    Quat, // 10
     AABB,
-    BASIS,
-    TRANSFORM,
+    Basis,
+    Transform,
 
     // misc types
-    COLOR,
-    NODE_PATH, // 15
+    Color,
+    NodePath, // 15
     _RID,
-    OBJECT,
-    DICTIONARY,
-    ARRAY,
+    Object,
+    Dictionary,
+    Array,
 
     // arrays
-    POOL_BYTE_ARRAY, // 20
-    POOL_INT_ARRAY,
-    POOL_REAL_ARRAY,
-    POOL_STRING_ARRAY,
-    POOL_VECTOR2_ARRAY,
-    POOL_VECTOR3_ARRAY, // 25
-    POOL_COLOR_ARRAY,
+    PoolByteArray, // 20
+    PoolIntArray,
+    PoolRealArray,
+    PoolStringArray,
+    PoolVector2Array,
+    PoolVector3Array, // 25
+    PoolColorArray,
 
-    VARIANT_MAX,
+    VariantMax,
+}
+
+impl Default for VariantType {
+    fn default() -> Self {
+        Nil
+    }
 }
 
 unsafe impl ExternType for VariantType {
@@ -51,7 +56,7 @@ unsafe impl ExternType for VariantType {
 #[cxx::bridge(namespace = gcs::ffi)]
 pub mod ffi {
     unsafe extern "C++" {
-        include!("../../include/variant.h");
+        include!("../../include/godot/variant.h");
         include!("cxx.h");
         pub type Variant;
         pub type VariantType = crate::godot::variant::VariantType;

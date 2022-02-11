@@ -3,23 +3,6 @@ use crate::entity::EntityId;
 use cxx::{type_id, ExternType};
 use std::collections::HashMap;
 
-#[cxx::bridge(namespace = gcs::ffi)]
-pub mod ffi {
-    extern "Rust" {
-        include!("component_value.rs.h");
-        include!("entity.rs.h");
-        type ComponentData;
-        fn get_field(self: &ComponentData, field: String) -> &ComponentValue;
-        fn set_field(self: &mut ComponentData, field: String, value: &ComponentValue);
-        fn create_component_data(entity: &EntityId) -> Box<ComponentData>;
-    }
-
-    extern "C++" {
-        type ComponentValue = crate::component::component_value::ComponentValue;
-        type EntityId = crate::entity::EntityId;
-    }
-}
-
 pub struct ComponentData {
     entity: EntityId,
     fields: HashMap<String, ComponentValue>,
@@ -50,7 +33,7 @@ impl ComponentData {
     }
 }
 
-fn create_component_data(entity: &EntityId) -> Box<ComponentData> {
+pub(crate) fn create_component_data(entity: &EntityId) -> Box<ComponentData> {
     Box::new(ComponentData::new(*entity))
 }
 

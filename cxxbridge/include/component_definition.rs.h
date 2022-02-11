@@ -355,6 +355,6 @@ private:
 
 ::rust::Box<::gcs::ffi::ComponentDefinition> create_component_definition() noexcept;
 
-::gcs::ffi::ComponentFieldDefinition create_component_field_definition(::rust::String name, ::gcs::ffi::VariantType field_type) noexcept;
+::gcs::ffi::ComponentFieldDefinition create_component_field_definition() noexcept;
 } // namespace ffi
 } // namespace gcs

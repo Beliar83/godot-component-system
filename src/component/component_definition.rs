@@ -1,11 +1,10 @@
 use crate::component::component_definition::ffi::ComponentFieldDefinition;
-use crate::godot::variant::ffi::VariantType;
 use cxx::{type_id, ExternType};
 
 #[cxx::bridge(namespace = gcs::ffi)]
 pub mod ffi {
 
-    #[derive(Hash, Eq, PartialEq, Debug, Clone)]
+    #[derive(Hash, Eq, PartialEq, Debug, Clone, Default)]
     pub struct ComponentFieldDefinition {
         pub name: String,
         pub field_type: VariantType,
@@ -22,10 +21,7 @@ pub mod ffi {
             field_definition: ComponentFieldDefinition,
         );
 
-        pub fn create_component_field_definition(
-            name: String,
-            field_type: VariantType,
-        ) -> ComponentFieldDefinition;
+        pub fn create_component_field_definition() -> ComponentFieldDefinition;
 
     }
 
@@ -34,17 +30,8 @@ pub mod ffi {
     }
 }
 
-impl ffi::ComponentFieldDefinition {
-    pub fn new(name: String, field_type: VariantType) -> Self {
-        ffi::ComponentFieldDefinition { name, field_type }
-    }
-}
-
-pub fn create_component_field_definition(
-    name: String,
-    field_type: VariantType,
-) -> ffi::ComponentFieldDefinition {
-    ffi::ComponentFieldDefinition::new(name, field_type)
+pub fn create_component_field_definition() -> ffi::ComponentFieldDefinition {
+    ffi::ComponentFieldDefinition::default()
 }
 
 #[derive(Hash, Eq, PartialEq, Debug, Clone)]

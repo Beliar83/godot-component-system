@@ -70,78 +70,78 @@ fn component_value_from_variant(value: &Variant) -> Box<ComponentValue> {
         let variant_type: VariantType = value.get_type();
 
         match variant_type {
-            VariantType::NIL => Box::new(ComponentValue::Nil),
-            VariantType::BOOL => Box::new(ComponentValue::Bool(variant_as_bool(value))),
-            VariantType::INT => Box::new(ComponentValue::Int(variant_as_i64(value))),
-            VariantType::REAL => Box::new(ComponentValue::Real(variant_as_f64(value))),
-            VariantType::STRING => Box::new(ComponentValue::String(variant_as_string(value))),
-            VariantType::VECTOR2 => {
+            VariantType::Nil => Box::new(ComponentValue::Nil),
+            VariantType::Bool => Box::new(ComponentValue::Bool(variant_as_bool(value))),
+            VariantType::Int => Box::new(ComponentValue::Int(variant_as_i64(value))),
+            VariantType::Real => Box::new(ComponentValue::Real(variant_as_f64(value))),
+            VariantType::String => Box::new(ComponentValue::String(variant_as_string(value))),
+            VariantType::Vector2 => {
                 unimplemented!()
             }
-            VariantType::RECT2 => {
+            VariantType::Rect2 => {
                 unimplemented!()
             }
-            VariantType::VECTOR3 => {
+            VariantType::Vector3 => {
                 unimplemented!()
             }
-            VariantType::TRANSFORM2D => {
+            VariantType::Transform2D => {
                 unimplemented!()
             }
-            VariantType::PLANE => {
+            VariantType::Plan => {
                 unimplemented!()
             }
-            VariantType::QUAT => {
+            VariantType::Quat => {
                 unimplemented!()
             }
             VariantType::AABB => {
                 unimplemented!()
             }
-            VariantType::BASIS => {
+            VariantType::Basis => {
                 unimplemented!()
             }
-            VariantType::TRANSFORM => {
+            VariantType::Transform => {
                 unimplemented!()
             }
-            VariantType::COLOR => {
+            VariantType::Color => {
                 unimplemented!()
             }
-            VariantType::NODE_PATH => {
+            VariantType::NodePath => {
                 unimplemented!()
             }
             VariantType::_RID => {
                 unimplemented!()
             }
-            VariantType::OBJECT => {
+            VariantType::Object => {
                 unimplemented!()
             }
-            VariantType::DICTIONARY => {
+            VariantType::Dictionary => {
                 unimplemented!()
             }
-            VariantType::ARRAY => {
+            VariantType::Array => {
                 unimplemented!()
             }
-            VariantType::POOL_BYTE_ARRAY => {
+            VariantType::PoolByteArray => {
                 unimplemented!()
             }
-            VariantType::POOL_INT_ARRAY => {
+            VariantType::PoolIntArray => {
                 unimplemented!()
             }
-            VariantType::POOL_REAL_ARRAY => {
+            VariantType::PoolRealArray => {
                 unimplemented!()
             }
-            VariantType::POOL_STRING_ARRAY => {
+            VariantType::PoolStringArray => {
                 unimplemented!()
             }
-            VariantType::POOL_VECTOR2_ARRAY => {
+            VariantType::PoolVector2Array => {
                 unimplemented!()
             }
-            VariantType::POOL_VECTOR3_ARRAY => {
+            VariantType::PoolVector3Array => {
                 unimplemented!()
             }
-            VariantType::POOL_COLOR_ARRAY => {
+            VariantType::PoolColorArray => {
                 unimplemented!()
             }
-            VariantType::VARIANT_MAX => {
+            VariantType::VariantMax => {
                 unimplemented!()
             }
         }

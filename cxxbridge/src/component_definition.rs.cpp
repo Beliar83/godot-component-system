@@ -421,7 +421,7 @@ private:
 
 static_assert(
     ::rust::IsRelocatable<::gcs::ffi::VariantType>::value,
-    "type gcs::ffi::VariantType should be trivially move constructible and trivially destructible in C++ to be used as a field of `ComponentFieldDefinition` or argument of `create_component_field_definition` in Rust");
+    "type gcs::ffi::VariantType should be trivially move constructible and trivially destructible in C++ to be used as a field of `ComponentFieldDefinition` in Rust");
 
 namespace gcs {
 namespace ffi {
@@ -435,7 +435,7 @@ bool gcs$ffi$cxxbridge1$ComponentFieldDefinition$operator$eq(const ComponentFiel
 
 void gcs$ffi$cxxbridge1$ComponentDefinition$add_field(::gcs::ffi::ComponentDefinition &self, ::gcs::ffi::ComponentFieldDefinition *field_definition) noexcept;
 
-void gcs$ffi$cxxbridge1$create_component_field_definition(::rust::String *name, ::gcs::ffi::VariantType *field_type, ::gcs::ffi::ComponentFieldDefinition *return$) noexcept;
+void gcs$ffi$cxxbridge1$create_component_field_definition(::gcs::ffi::ComponentFieldDefinition *return$) noexcept;
 } // extern "C"
 } // namespace ffi
 } // namespace gcs
@@ -475,10 +475,9 @@ void ComponentDefinition::add_field(::gcs::ffi::ComponentFieldDefinition field_d
   gcs$ffi$cxxbridge1$ComponentDefinition$add_field(*this, &field_definition$.value);
 }
 
-::gcs::ffi::ComponentFieldDefinition create_component_field_definition(::rust::String name, ::gcs::ffi::VariantType field_type) noexcept {
-  ::rust::ManuallyDrop<::gcs::ffi::VariantType> field_type$(::std::move(field_type));
+::gcs::ffi::ComponentFieldDefinition create_component_field_definition() noexcept {
   ::rust::MaybeUninit<::gcs::ffi::ComponentFieldDefinition> return$;
-  gcs$ffi$cxxbridge1$create_component_field_definition(&name, &field_type$.value, &return$.value);
+  gcs$ffi$cxxbridge1$create_component_field_definition(&return$.value);
   return ::std::move(return$.value);
 }
 } // namespace ffi

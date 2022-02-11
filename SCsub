@@ -8,9 +8,7 @@ cxx_files = [
     'godot/variant.rs',
     'component/component_value.rs',
     'component/component_definition.rs',
-    'component/component_data.rs',
     'ecs_world.rs',
-    'entity.rs'
 ]
 
 command = 'cargo build --manifest-path=./Cargo.toml'
@@ -56,6 +54,11 @@ src_list = ['register_types.cpp',
             'src/component.cpp',
             'src/godot/variant.cpp',
             'src/godot/string.cpp',
+            'src/component_field_definition.cpp',
+            'src/component_definition.cpp',
+            'src/component_info.cpp',
+            'src/ecs_world_2d.cpp',
+            'src/entity.cpp',
             ]
 
 old_path = os.getcwd()
@@ -83,7 +86,6 @@ libsuffix = env['LIBSUFFIX']
 
 env_godot_component_system.add_source_files(env.modules_sources, src_list)
 env_godot_component_system.Append(CPPPATH=['include'])
-env_godot_component_system.Append(CPPPATH=['target/cxxbridge'])
 env_godot_component_system.Append(CPPPATH=['cxxbridge/include'])
 
 if env.msvc:

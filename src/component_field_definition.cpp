@@ -1,4 +1,5 @@
 #include "component_field_definition.h"
+#include "component_definition.rs.h"
 #include "godot/string.h" // NOLINT(modernize-deprecated-headers)
 
 StringName ComponentFieldDefinition::get_name() const {
@@ -31,7 +32,7 @@ gcs::ffi::ComponentFieldDefinition ComponentFieldDefinition::get_definition() {
     return componentFieldDefinition;
 }
 
-ComponentFieldDefinition::ComponentFieldDefinition(const StringName& name, Variant::Type type) : componentFieldDefinition(
-        gcs::ffi::create_component_field_definition(godot_string_to_rust_string(name), type)){
+ComponentFieldDefinition::ComponentFieldDefinition() : componentFieldDefinition(
+        gcs::ffi::create_component_field_definition()) {
 
 }

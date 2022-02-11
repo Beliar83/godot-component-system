@@ -1,4 +1,4 @@
-#include "../../include/variant.h"
+#include "../../include/godot/variant.h"
 #include "cxx.h"
 #include <array>
 #include <cstdint>

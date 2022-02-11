@@ -69,8 +69,8 @@ class World {
     components: HashMap<String, Vec<Rc<RefCell<ComponentData>>>>
     components_of_entity: HashMap<EntityId, HashMap<String, Rc<RefCell<ComponentData>>>>
 
-    register_component(&mut self, name: String, component_definition: ComponentDefinition) -> Result<ComponentInfo, String>
-    create_entity(&mut self) -> EntityId
+    register_component(&mut self, name: String, component_definition: ComponentDefinition) -> Result<Box<ComponentInfo>, String>
+    create_entity(&mut self) -> Box<EntityId>
     register_entity(&mut self, id: &EntityId) -> Result<(), RegisterEntityError>
     add_component_to_entity(&mut self, entity_id: &EntityId, component: String) -> Result<(), String>
     set_component_data(&mut self, entity_id: &EntityId, component: String, data: &ComponentData) -> Result<(), SetComponentDataError>

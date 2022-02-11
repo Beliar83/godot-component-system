@@ -1,19 +1,14 @@
+#include "component_value.rs.h"
 #include "cxx.h"
-#include "component_data.rs.h"
+#include "cxx.h"
+#include "godot/variant.h"
 #include "component_definition.rs.h"
-#include "entity.rs.h"
-#include "variant.h"
-#include <algorithm>
+#include "component_value.rs.h"
 #include <array>
-#include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <exception>
-#include <functional>
-#include <initializer_list>
-#include <iterator>
 #include <new>
-#include <stdexcept>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -22,23 +17,12 @@ namespace rust {
 inline namespace cxxbridge1 {
 // #include "rust/cxx.h"
 
-#ifndef CXXBRIDGE1_PANIC
-#define CXXBRIDGE1_PANIC
-template <typename Exception>
-void panic [[noreturn]] (const char *msg);
-#endif // CXXBRIDGE1_PANIC
-
 struct unsafe_bitcopy_t;
 
 namespace {
 template <typename T>
 class impl;
 } // namespace
-
-template <typename T>
-::std::size_t size_of();
-template <typename T>
-::std::size_t align_of();
 
 #ifndef CXXBRIDGE1_RUST_STRING
 #define CXXBRIDGE1_RUST_STRING
@@ -106,296 +90,6 @@ private:
   std::array<std::uintptr_t, 3> repr;
 };
 #endif // CXXBRIDGE1_RUST_STRING
-
-#ifndef CXXBRIDGE1_RUST_SLICE
-#define CXXBRIDGE1_RUST_SLICE
-namespace detail {
-template <bool>
-struct copy_assignable_if {};
-
-template <>
-struct copy_assignable_if<false> {
-  copy_assignable_if() noexcept = default;
-  copy_assignable_if(const copy_assignable_if &) noexcept = default;
-  copy_assignable_if &operator=(const copy_assignable_if &) &noexcept = delete;
-  copy_assignable_if &operator=(copy_assignable_if &&) &noexcept = default;
-};
-} // namespace detail
-
-template <typename T>
-class Slice final
-    : private detail::copy_assignable_if<std::is_const<T>::value> {
-public:
-  using value_type = T;
-
-  Slice() noexcept;
-  Slice(T *, std::size_t count) noexcept;
-
-  Slice &operator=(const Slice<T> &) &noexcept = default;
-  Slice &operator=(Slice<T> &&) &noexcept = default;
-
-  T *data() const noexcept;
-  std::size_t size() const noexcept;
-  std::size_t length() const noexcept;
-  bool empty() const noexcept;
-
-  T &operator[](std::size_t n) const noexcept;
-  T &at(std::size_t n) const;
-  T &front() const noexcept;
-  T &back() const noexcept;
-
-  Slice(const Slice<T> &) noexcept = default;
-  ~Slice() noexcept = default;
-
-  class iterator;
-  iterator begin() const noexcept;
-  iterator end() const noexcept;
-
-  void swap(Slice &) noexcept;
-
-private:
-  class uninit;
-  Slice(uninit) noexcept;
-  friend impl<Slice>;
-  friend void sliceInit(void *, const void *, std::size_t) noexcept;
-  friend void *slicePtr(const void *) noexcept;
-  friend std::size_t sliceLen(const void *) noexcept;
-
-  std::array<std::uintptr_t, 2> repr;
-};
-
-template <typename T>
-class Slice<T>::iterator final {
-public:
-  using iterator_category = std::random_access_iterator_tag;
-  using value_type = T;
-  using difference_type = std::ptrdiff_t;
-  using pointer = typename std::add_pointer<T>::type;
-  using reference = typename std::add_lvalue_reference<T>::type;
-
-  reference operator*() const noexcept;
-  pointer operator->() const noexcept;
-  reference operator[](difference_type) const noexcept;
-
-  iterator &operator++() noexcept;
-  iterator operator++(int) noexcept;
-  iterator &operator--() noexcept;
-  iterator operator--(int) noexcept;
-
-  iterator &operator+=(difference_type) noexcept;
-  iterator &operator-=(difference_type) noexcept;
-  iterator operator+(difference_type) const noexcept;
-  iterator operator-(difference_type) const noexcept;
-  difference_type operator-(const iterator &) const noexcept;
-
-  bool operator==(const iterator &) const noexcept;
-  bool operator!=(const iterator &) const noexcept;
-  bool operator<(const iterator &) const noexcept;
-  bool operator<=(const iterator &) const noexcept;
-  bool operator>(const iterator &) const noexcept;
-  bool operator>=(const iterator &) const noexcept;
-
-private:
-  friend class Slice;
-  void *pos;
-  std::size_t stride;
-};
-
-template <typename T>
-Slice<T>::Slice() noexcept {
-  sliceInit(this, reinterpret_cast<void *>(align_of<T>()), 0);
-}
-
-template <typename T>
-Slice<T>::Slice(T *s, std::size_t count) noexcept {
-  assert(s != nullptr || count == 0);
-  sliceInit(this,
-            s == nullptr && count == 0
-                ? reinterpret_cast<void *>(align_of<T>())
-                : const_cast<typename std::remove_const<T>::type *>(s),
-            count);
-}
-
-template <typename T>
-T *Slice<T>::data() const noexcept {
-  return reinterpret_cast<T *>(slicePtr(this));
-}
-
-template <typename T>
-std::size_t Slice<T>::size() const noexcept {
-  return sliceLen(this);
-}
-
-template <typename T>
-std::size_t Slice<T>::length() const noexcept {
-  return this->size();
-}
-
-template <typename T>
-bool Slice<T>::empty() const noexcept {
-  return this->size() == 0;
-}
-
-template <typename T>
-T &Slice<T>::operator[](std::size_t n) const noexcept {
-  assert(n < this->size());
-  auto ptr = static_cast<char *>(slicePtr(this)) + size_of<T>() * n;
-  return *reinterpret_cast<T *>(ptr);
-}
-
-template <typename T>
-T &Slice<T>::at(std::size_t n) const {
-  if (n >= this->size()) {
-    panic<std::out_of_range>("rust::Slice index out of range");
-  }
-  return (*this)[n];
-}
-
-template <typename T>
-T &Slice<T>::front() const noexcept {
-  assert(!this->empty());
-  return (*this)[0];
-}
-
-template <typename T>
-T &Slice<T>::back() const noexcept {
-  assert(!this->empty());
-  return (*this)[this->size() - 1];
-}
-
-template <typename T>
-typename Slice<T>::iterator::reference
-Slice<T>::iterator::operator*() const noexcept {
-  return *static_cast<T *>(this->pos);
-}
-
-template <typename T>
-typename Slice<T>::iterator::pointer
-Slice<T>::iterator::operator->() const noexcept {
-  return static_cast<T *>(this->pos);
-}
-
-template <typename T>
-typename Slice<T>::iterator::reference Slice<T>::iterator::operator[](
-    typename Slice<T>::iterator::difference_type n) const noexcept {
-  auto ptr = static_cast<char *>(this->pos) + this->stride * n;
-  return *reinterpret_cast<T *>(ptr);
-}
-
-template <typename T>
-typename Slice<T>::iterator &Slice<T>::iterator::operator++() noexcept {
-  this->pos = static_cast<char *>(this->pos) + this->stride;
-  return *this;
-}
-
-template <typename T>
-typename Slice<T>::iterator Slice<T>::iterator::operator++(int) noexcept {
-  auto ret = iterator(*this);
-  this->pos = static_cast<char *>(this->pos) + this->stride;
-  return ret;
-}
-
-template <typename T>
-typename Slice<T>::iterator &Slice<T>::iterator::operator--() noexcept {
-  this->pos = static_cast<char *>(this->pos) - this->stride;
-  return *this;
-}
-
-template <typename T>
-typename Slice<T>::iterator Slice<T>::iterator::operator--(int) noexcept {
-  auto ret = iterator(*this);
-  this->pos = static_cast<char *>(this->pos) - this->stride;
-  return ret;
-}
-
-template <typename T>
-typename Slice<T>::iterator &Slice<T>::iterator::operator+=(
-    typename Slice<T>::iterator::difference_type n) noexcept {
-  this->pos = static_cast<char *>(this->pos) + this->stride * n;
-  return *this;
-}
-
-template <typename T>
-typename Slice<T>::iterator &Slice<T>::iterator::operator-=(
-    typename Slice<T>::iterator::difference_type n) noexcept {
-  this->pos = static_cast<char *>(this->pos) - this->stride * n;
-  return *this;
-}
-
-template <typename T>
-typename Slice<T>::iterator Slice<T>::iterator::operator+(
-    typename Slice<T>::iterator::difference_type n) const noexcept {
-  auto ret = iterator(*this);
-  ret.pos = static_cast<char *>(this->pos) + this->stride * n;
-  return ret;
-}
-
-template <typename T>
-typename Slice<T>::iterator Slice<T>::iterator::operator-(
-    typename Slice<T>::iterator::difference_type n) const noexcept {
-  auto ret = iterator(*this);
-  ret.pos = static_cast<char *>(this->pos) - this->stride * n;
-  return ret;
-}
-
-template <typename T>
-typename Slice<T>::iterator::difference_type
-Slice<T>::iterator::operator-(const iterator &other) const noexcept {
-  auto diff = std::distance(static_cast<char *>(other.pos),
-                            static_cast<char *>(this->pos));
-  return diff / this->stride;
-}
-
-template <typename T>
-bool Slice<T>::iterator::operator==(const iterator &other) const noexcept {
-  return this->pos == other.pos;
-}
-
-template <typename T>
-bool Slice<T>::iterator::operator!=(const iterator &other) const noexcept {
-  return this->pos != other.pos;
-}
-
-template <typename T>
-bool Slice<T>::iterator::operator<(const iterator &other) const noexcept {
-  return this->pos < other.pos;
-}
-
-template <typename T>
-bool Slice<T>::iterator::operator<=(const iterator &other) const noexcept {
-  return this->pos <= other.pos;
-}
-
-template <typename T>
-bool Slice<T>::iterator::operator>(const iterator &other) const noexcept {
-  return this->pos > other.pos;
-}
-
-template <typename T>
-bool Slice<T>::iterator::operator>=(const iterator &other) const noexcept {
-  return this->pos >= other.pos;
-}
-
-template <typename T>
-typename Slice<T>::iterator Slice<T>::begin() const noexcept {
-  iterator it;
-  it.pos = slicePtr(this);
-  it.stride = size_of<T>();
-  return it;
-}
-
-template <typename T>
-typename Slice<T>::iterator Slice<T>::end() const noexcept {
-  iterator it = this->begin();
-  it.pos = static_cast<char *>(it.pos) + it.stride * this->size();
-  return it;
-}
-
-template <typename T>
-void Slice<T>::swap(Slice &rhs) noexcept {
-  std::swap(*this, rhs);
-}
-#endif // CXXBRIDGE1_RUST_SLICE
 
 #ifndef CXXBRIDGE1_RUST_BOX
 #define CXXBRIDGE1_RUST_BOX
@@ -553,251 +247,6 @@ template <typename T>
 Box<T>::Box(uninit) noexcept {}
 #endif // CXXBRIDGE1_RUST_BOX
 
-#ifndef CXXBRIDGE1_RUST_BITCOPY_T
-#define CXXBRIDGE1_RUST_BITCOPY_T
-struct unsafe_bitcopy_t final {
-  explicit unsafe_bitcopy_t() = default;
-};
-#endif // CXXBRIDGE1_RUST_BITCOPY_T
-
-#ifndef CXXBRIDGE1_RUST_VEC
-#define CXXBRIDGE1_RUST_VEC
-template <typename T>
-class Vec final {
-public:
-  using value_type = T;
-
-  Vec() noexcept;
-  Vec(std::initializer_list<T>);
-  Vec(const Vec &);
-  Vec(Vec &&) noexcept;
-  ~Vec() noexcept;
-
-  Vec &operator=(Vec &&) &noexcept;
-  Vec &operator=(const Vec &) &;
-
-  std::size_t size() const noexcept;
-  bool empty() const noexcept;
-  const T *data() const noexcept;
-  T *data() noexcept;
-  std::size_t capacity() const noexcept;
-
-  const T &operator[](std::size_t n) const noexcept;
-  const T &at(std::size_t n) const;
-  const T &front() const noexcept;
-  const T &back() const noexcept;
-
-  T &operator[](std::size_t n) noexcept;
-  T &at(std::size_t n);
-  T &front() noexcept;
-  T &back() noexcept;
-
-  void reserve(std::size_t new_cap);
-  void push_back(const T &value);
-  void push_back(T &&value);
-  template <typename... Args>
-  void emplace_back(Args &&...args);
-  void truncate(std::size_t len);
-  void clear();
-
-  using iterator = typename Slice<T>::iterator;
-  iterator begin() noexcept;
-  iterator end() noexcept;
-
-  using const_iterator = typename Slice<const T>::iterator;
-  const_iterator begin() const noexcept;
-  const_iterator end() const noexcept;
-  const_iterator cbegin() const noexcept;
-  const_iterator cend() const noexcept;
-
-  void swap(Vec &) noexcept;
-
-  Vec(unsafe_bitcopy_t, const Vec &) noexcept;
-
-private:
-  void reserve_total(std::size_t new_cap) noexcept;
-  void set_len(std::size_t len) noexcept;
-  void drop() noexcept;
-
-  friend void swap(Vec &lhs, Vec &rhs) noexcept { lhs.swap(rhs); }
-
-  std::array<std::uintptr_t, 3> repr;
-};
-
-template <typename T>
-Vec<T>::Vec(std::initializer_list<T> init) : Vec{} {
-  this->reserve_total(init.size());
-  std::move(init.begin(), init.end(), std::back_inserter(*this));
-}
-
-template <typename T>
-Vec<T>::Vec(const Vec &other) : Vec() {
-  this->reserve_total(other.size());
-  std::copy(other.begin(), other.end(), std::back_inserter(*this));
-}
-
-template <typename T>
-Vec<T>::Vec(Vec &&other) noexcept : repr(other.repr) {
-  new (&other) Vec();
-}
-
-template <typename T>
-Vec<T>::~Vec() noexcept {
-  this->drop();
-}
-
-template <typename T>
-Vec<T> &Vec<T>::operator=(Vec &&other) &noexcept {
-  this->drop();
-  this->repr = other.repr;
-  new (&other) Vec();
-  return *this;
-}
-
-template <typename T>
-Vec<T> &Vec<T>::operator=(const Vec &other) & {
-  if (this != &other) {
-    this->drop();
-    new (this) Vec(other);
-  }
-  return *this;
-}
-
-template <typename T>
-bool Vec<T>::empty() const noexcept {
-  return this->size() == 0;
-}
-
-template <typename T>
-T *Vec<T>::data() noexcept {
-  return const_cast<T *>(const_cast<const Vec<T> *>(this)->data());
-}
-
-template <typename T>
-const T &Vec<T>::operator[](std::size_t n) const noexcept {
-  assert(n < this->size());
-  auto data = reinterpret_cast<const char *>(this->data());
-  return *reinterpret_cast<const T *>(data + n * size_of<T>());
-}
-
-template <typename T>
-const T &Vec<T>::at(std::size_t n) const {
-  if (n >= this->size()) {
-    panic<std::out_of_range>("rust::Vec index out of range");
-  }
-  return (*this)[n];
-}
-
-template <typename T>
-const T &Vec<T>::front() const noexcept {
-  assert(!this->empty());
-  return (*this)[0];
-}
-
-template <typename T>
-const T &Vec<T>::back() const noexcept {
-  assert(!this->empty());
-  return (*this)[this->size() - 1];
-}
-
-template <typename T>
-T &Vec<T>::operator[](std::size_t n) noexcept {
-  assert(n < this->size());
-  auto data = reinterpret_cast<char *>(this->data());
-  return *reinterpret_cast<T *>(data + n * size_of<T>());
-}
-
-template <typename T>
-T &Vec<T>::at(std::size_t n) {
-  if (n >= this->size()) {
-    panic<std::out_of_range>("rust::Vec index out of range");
-  }
-  return (*this)[n];
-}
-
-template <typename T>
-T &Vec<T>::front() noexcept {
-  assert(!this->empty());
-  return (*this)[0];
-}
-
-template <typename T>
-T &Vec<T>::back() noexcept {
-  assert(!this->empty());
-  return (*this)[this->size() - 1];
-}
-
-template <typename T>
-void Vec<T>::reserve(std::size_t new_cap) {
-  this->reserve_total(new_cap);
-}
-
-template <typename T>
-void Vec<T>::push_back(const T &value) {
-  this->emplace_back(value);
-}
-
-template <typename T>
-void Vec<T>::push_back(T &&value) {
-  this->emplace_back(std::move(value));
-}
-
-template <typename T>
-template <typename... Args>
-void Vec<T>::emplace_back(Args &&...args) {
-  auto size = this->size();
-  this->reserve_total(size + 1);
-  ::new (reinterpret_cast<T *>(reinterpret_cast<char *>(this->data()) +
-                               size * size_of<T>()))
-      T(std::forward<Args>(args)...);
-  this->set_len(size + 1);
-}
-
-template <typename T>
-void Vec<T>::clear() {
-  this->truncate(0);
-}
-
-template <typename T>
-typename Vec<T>::iterator Vec<T>::begin() noexcept {
-  return Slice<T>(this->data(), this->size()).begin();
-}
-
-template <typename T>
-typename Vec<T>::iterator Vec<T>::end() noexcept {
-  return Slice<T>(this->data(), this->size()).end();
-}
-
-template <typename T>
-typename Vec<T>::const_iterator Vec<T>::begin() const noexcept {
-  return this->cbegin();
-}
-
-template <typename T>
-typename Vec<T>::const_iterator Vec<T>::end() const noexcept {
-  return this->cend();
-}
-
-template <typename T>
-typename Vec<T>::const_iterator Vec<T>::cbegin() const noexcept {
-  return Slice<const T>(this->data(), this->size()).begin();
-}
-
-template <typename T>
-typename Vec<T>::const_iterator Vec<T>::cend() const noexcept {
-  return Slice<const T>(this->data(), this->size()).end();
-}
-
-template <typename T>
-void Vec<T>::swap(Vec &rhs) noexcept {
-  using std::swap;
-  swap(this->repr, rhs.repr);
-}
-
-template <typename T>
-Vec<T>::Vec(unsafe_bitcopy_t, const Vec &bits) noexcept : repr(bits.repr) {}
-#endif // CXXBRIDGE1_RUST_VEC
-
 #ifndef CXXBRIDGE1_RUST_ERROR
 #define CXXBRIDGE1_RUST_ERROR
 class Error final : public std::exception {
@@ -897,43 +346,6 @@ std::size_t align_of() {
 }
 #endif // CXXBRIDGE1_LAYOUT
 
-#ifndef CXXBRIDGE1_RELOCATABLE
-#define CXXBRIDGE1_RELOCATABLE
-namespace detail {
-template <typename... Ts>
-struct make_void {
-  using type = void;
-};
-
-template <typename... Ts>
-using void_t = typename make_void<Ts...>::type;
-
-template <typename Void, template <typename...> class, typename...>
-struct detect : std::false_type {};
-template <template <typename...> class T, typename... A>
-struct detect<void_t<T<A...>>, T, A...> : std::true_type {};
-
-template <template <typename...> class T, typename... A>
-using is_detected = detect<void, T, A...>;
-
-template <typename T>
-using detect_IsRelocatable = typename T::IsRelocatable;
-
-template <typename T>
-struct get_IsRelocatable
-    : std::is_same<typename T::IsRelocatable, std::true_type> {};
-} // namespace detail
-
-template <typename T>
-struct IsRelocatable
-    : std::conditional<
-          detail::is_detected<detail::detect_IsRelocatable, T>::value,
-          detail::get_IsRelocatable<T>,
-          std::integral_constant<
-              bool, std::is_trivially_move_constructible<T>::value &&
-                        std::is_trivially_destructible<T>::value>>::type {};
-#endif // CXXBRIDGE1_RELOCATABLE
-
 namespace detail {
 template <typename T, typename = void *>
 struct operator_new {
@@ -945,13 +357,6 @@ struct operator_new<T, decltype(T::operator new(sizeof(T)))> {
   void *operator()(::std::size_t sz) { return T::operator new(sz); }
 };
 } // namespace detail
-
-template <typename T>
-union ManuallyDrop {
-  T value;
-  ManuallyDrop(T &&value) : value(::std::move(value)) {}
-  ~ManuallyDrop() {}
-};
 
 template <typename T>
 union MaybeUninit {
@@ -986,6 +391,8 @@ public:
 namespace gcs {
   namespace ffi {
     struct ComponentInfo;
+    struct ComponentData;
+    struct EntityId;
     struct ECSWorld;
   }
 }
@@ -994,22 +401,57 @@ namespace gcs {
 namespace ffi {
 #ifndef CXXBRIDGE1_STRUCT_gcs$ffi$ComponentInfo
 #define CXXBRIDGE1_STRUCT_gcs$ffi$ComponentInfo
-struct ComponentInfo final {
-  ::std::uint64_t hash;
+struct ComponentInfo final : public ::rust::Opaque {
+  ~ComponentInfo() = delete;
 
-  bool operator==(const ComponentInfo &) const noexcept;
-  bool operator!=(const ComponentInfo &) const noexcept;
-  using IsRelocatable = ::std::true_type;
+private:
+  friend ::rust::layout;
+  struct layout {
+    static ::std::size_t size() noexcept;
+    static ::std::size_t align() noexcept;
+  };
 };
 #endif // CXXBRIDGE1_STRUCT_gcs$ffi$ComponentInfo
+
+#ifndef CXXBRIDGE1_STRUCT_gcs$ffi$ComponentData
+#define CXXBRIDGE1_STRUCT_gcs$ffi$ComponentData
+struct ComponentData final : public ::rust::Opaque {
+  const ::gcs::ffi::ComponentValue &get_field(::rust::String field) const noexcept;
+  void set_field(::rust::String field, const ::gcs::ffi::ComponentValue &value) noexcept;
+  ~ComponentData() = delete;
+
+private:
+  friend ::rust::layout;
+  struct layout {
+    static ::std::size_t size() noexcept;
+    static ::std::size_t align() noexcept;
+  };
+};
+#endif // CXXBRIDGE1_STRUCT_gcs$ffi$ComponentData
+
+#ifndef CXXBRIDGE1_STRUCT_gcs$ffi$EntityId
+#define CXXBRIDGE1_STRUCT_gcs$ffi$EntityId
+struct EntityId final : public ::rust::Opaque {
+  ::rust::String as_string() const noexcept;
+  ~EntityId() = delete;
+
+private:
+  friend ::rust::layout;
+  struct layout {
+    static ::std::size_t size() noexcept;
+    static ::std::size_t align() noexcept;
+  };
+};
+#endif // CXXBRIDGE1_STRUCT_gcs$ffi$EntityId
 
 #ifndef CXXBRIDGE1_STRUCT_gcs$ffi$ECSWorld
 #define CXXBRIDGE1_STRUCT_gcs$ffi$ECSWorld
 struct ECSWorld final : public ::rust::Opaque {
-  ::gcs::ffi::ComponentInfo register_component(::rust::String name, ::rust::Vec<::gcs::ffi::ComponentFieldDefinition> fields);
+  ::rust::Box<::gcs::ffi::ComponentInfo> register_component(::rust::String name, const ::gcs::ffi::ComponentDefinition &component_definition);
   void register_entity(const ::gcs::ffi::EntityId &id);
   void set_component_data(const ::gcs::ffi::EntityId &entity_id, ::rust::String component, const ::gcs::ffi::ComponentData &data);
   bool is_component_added_to_entity(const ::gcs::ffi::EntityId &entity_id, ::rust::String component) const noexcept;
+  ::rust::Box<::gcs::ffi::EntityId> create_entity() noexcept;
   ~ECSWorld() = delete;
 
 private:
@@ -1020,22 +462,32 @@ private:
   };
 };
 #endif // CXXBRIDGE1_STRUCT_gcs$ffi$ECSWorld
-} // namespace ffi
-} // namespace gcs
 
-static_assert(
-    ::rust::IsRelocatable<::gcs::ffi::ComponentFieldDefinition>::value,
-    "type gcs::ffi::ComponentFieldDefinition should be trivially move constructible and trivially destructible in C++ to be used as a vector element in Vec<ComponentFieldDefinition> in Rust");
-
-namespace gcs {
-namespace ffi {
 extern "C" {
-bool gcs$ffi$cxxbridge1$ComponentInfo$operator$eq(const ComponentInfo &, const ComponentInfo &) noexcept;
-::std::size_t gcs$ffi$cxxbridge1$ComponentInfo$operator$hash(const ComponentInfo &) noexcept;
+::std::size_t gcs$ffi$cxxbridge1$ComponentInfo$operator$sizeof() noexcept;
+::std::size_t gcs$ffi$cxxbridge1$ComponentInfo$operator$alignof() noexcept;
+::std::size_t gcs$ffi$cxxbridge1$ComponentData$operator$sizeof() noexcept;
+::std::size_t gcs$ffi$cxxbridge1$ComponentData$operator$alignof() noexcept;
+
+const ::gcs::ffi::ComponentValue *gcs$ffi$cxxbridge1$ComponentData$get_field(const ::gcs::ffi::ComponentData &self, ::rust::String *field) noexcept;
+
+void gcs$ffi$cxxbridge1$ComponentData$set_field(::gcs::ffi::ComponentData &self, ::rust::String *field, const ::gcs::ffi::ComponentValue &value) noexcept;
+
+::gcs::ffi::ComponentData *gcs$ffi$cxxbridge1$create_component_data(const ::gcs::ffi::EntityId &entity) noexcept;
+::std::size_t gcs$ffi$cxxbridge1$EntityId$operator$sizeof() noexcept;
+::std::size_t gcs$ffi$cxxbridge1$EntityId$operator$alignof() noexcept;
+
+::gcs::ffi::EntityId *gcs$ffi$cxxbridge1$create_entity() noexcept;
+
+void gcs$ffi$cxxbridge1$EntityId$as_string(const ::gcs::ffi::EntityId &self, ::rust::String *return$) noexcept;
+
+::rust::repr::PtrLen gcs$ffi$cxxbridge1$entity_id_from_string(::rust::String *id, ::rust::Box<::gcs::ffi::EntityId> *return$) noexcept;
 ::std::size_t gcs$ffi$cxxbridge1$ECSWorld$operator$sizeof() noexcept;
 ::std::size_t gcs$ffi$cxxbridge1$ECSWorld$operator$alignof() noexcept;
 
-::rust::repr::PtrLen gcs$ffi$cxxbridge1$ECSWorld$register_component(::gcs::ffi::ECSWorld &self, ::rust::String *name, ::rust::Vec<::gcs::ffi::ComponentFieldDefinition> *fields, ::gcs::ffi::ComponentInfo *return$) noexcept;
+::gcs::ffi::ComponentInfo *gcs$ffi$cxxbridge1$create_component_info(::std::uint64_t hash) noexcept;
+
+::rust::repr::PtrLen gcs$ffi$cxxbridge1$ECSWorld$register_component(::gcs::ffi::ECSWorld &self, ::rust::String *name, const ::gcs::ffi::ComponentDefinition &component_definition, ::rust::Box<::gcs::ffi::ComponentInfo> *return$) noexcept;
 
 ::rust::repr::PtrLen gcs$ffi$cxxbridge1$ECSWorld$register_entity(::gcs::ffi::ECSWorld &self, const ::gcs::ffi::EntityId &id) noexcept;
 
@@ -1043,27 +495,64 @@ bool gcs$ffi$cxxbridge1$ComponentInfo$operator$eq(const ComponentInfo &, const C
 
 bool gcs$ffi$cxxbridge1$ECSWorld$is_component_added_to_entity(const ::gcs::ffi::ECSWorld &self, const ::gcs::ffi::EntityId &entity_id, ::rust::String *component) noexcept;
 
+::gcs::ffi::EntityId *gcs$ffi$cxxbridge1$ECSWorld$create_entity(::gcs::ffi::ECSWorld &self) noexcept;
+
 ::gcs::ffi::ECSWorld *gcs$ffi$cxxbridge1$create_ecs_world() noexcept;
 } // extern "C"
-} // namespace ffi
-} // namespace gcs
 
-namespace std {
-template <> struct hash<::gcs::ffi::ComponentInfo> {
-  ::std::size_t operator()(const ::gcs::ffi::ComponentInfo &self) const noexcept {
-    return ::gcs::ffi::gcs$ffi$cxxbridge1$ComponentInfo$operator$hash(self);
-  }
-};
-} // namespace std
-
-namespace gcs {
-namespace ffi {
-bool ComponentInfo::operator==(const ComponentInfo &rhs) const noexcept {
-  return gcs$ffi$cxxbridge1$ComponentInfo$operator$eq(*this, rhs);
+::std::size_t ComponentInfo::layout::size() noexcept {
+  return gcs$ffi$cxxbridge1$ComponentInfo$operator$sizeof();
 }
 
-bool ComponentInfo::operator!=(const ComponentInfo &rhs) const noexcept {
-  return !(*this == rhs);
+::std::size_t ComponentInfo::layout::align() noexcept {
+  return gcs$ffi$cxxbridge1$ComponentInfo$operator$alignof();
+}
+
+::std::size_t ComponentData::layout::size() noexcept {
+  return gcs$ffi$cxxbridge1$ComponentData$operator$sizeof();
+}
+
+::std::size_t ComponentData::layout::align() noexcept {
+  return gcs$ffi$cxxbridge1$ComponentData$operator$alignof();
+}
+
+const ::gcs::ffi::ComponentValue &ComponentData::get_field(::rust::String field) const noexcept {
+  return *gcs$ffi$cxxbridge1$ComponentData$get_field(*this, &field);
+}
+
+void ComponentData::set_field(::rust::String field, const ::gcs::ffi::ComponentValue &value) noexcept {
+  gcs$ffi$cxxbridge1$ComponentData$set_field(*this, &field, value);
+}
+
+::rust::Box<::gcs::ffi::ComponentData> create_component_data(const ::gcs::ffi::EntityId &entity) noexcept {
+  return ::rust::Box<::gcs::ffi::ComponentData>::from_raw(gcs$ffi$cxxbridge1$create_component_data(entity));
+}
+
+::std::size_t EntityId::layout::size() noexcept {
+  return gcs$ffi$cxxbridge1$EntityId$operator$sizeof();
+}
+
+::std::size_t EntityId::layout::align() noexcept {
+  return gcs$ffi$cxxbridge1$EntityId$operator$alignof();
+}
+
+::rust::Box<::gcs::ffi::EntityId> create_entity() noexcept {
+  return ::rust::Box<::gcs::ffi::EntityId>::from_raw(gcs$ffi$cxxbridge1$create_entity());
+}
+
+::rust::String EntityId::as_string() const noexcept {
+  ::rust::MaybeUninit<::rust::String> return$;
+  gcs$ffi$cxxbridge1$EntityId$as_string(*this, &return$.value);
+  return ::std::move(return$.value);
+}
+
+::rust::Box<::gcs::ffi::EntityId> entity_id_from_string(::rust::String id) {
+  ::rust::MaybeUninit<::rust::Box<::gcs::ffi::EntityId>> return$;
+  ::rust::repr::PtrLen error$ = gcs$ffi$cxxbridge1$entity_id_from_string(&id, &return$.value);
+  if (error$.ptr) {
+    throw ::rust::impl<::rust::Error>::error(error$);
+  }
+  return ::std::move(return$.value);
 }
 
 ::std::size_t ECSWorld::layout::size() noexcept {
@@ -1074,10 +563,13 @@ bool ComponentInfo::operator!=(const ComponentInfo &rhs) const noexcept {
   return gcs$ffi$cxxbridge1$ECSWorld$operator$alignof();
 }
 
-::gcs::ffi::ComponentInfo ECSWorld::register_component(::rust::String name, ::rust::Vec<::gcs::ffi::ComponentFieldDefinition> fields) {
-  ::rust::ManuallyDrop<::rust::Vec<::gcs::ffi::ComponentFieldDefinition>> fields$(::std::move(fields));
-  ::rust::MaybeUninit<::gcs::ffi::ComponentInfo> return$;
-  ::rust::repr::PtrLen error$ = gcs$ffi$cxxbridge1$ECSWorld$register_component(*this, &name, &fields$.value, &return$.value);
+::rust::Box<::gcs::ffi::ComponentInfo> create_component_info(::std::uint64_t hash) noexcept {
+  return ::rust::Box<::gcs::ffi::ComponentInfo>::from_raw(gcs$ffi$cxxbridge1$create_component_info(hash));
+}
+
+::rust::Box<::gcs::ffi::ComponentInfo> ECSWorld::register_component(::rust::String name, const ::gcs::ffi::ComponentDefinition &component_definition) {
+  ::rust::MaybeUninit<::rust::Box<::gcs::ffi::ComponentInfo>> return$;
+  ::rust::repr::PtrLen error$ = gcs$ffi$cxxbridge1$ECSWorld$register_component(*this, &name, component_definition, &return$.value);
   if (error$.ptr) {
     throw ::rust::impl<::rust::Error>::error(error$);
   }
@@ -1102,6 +594,10 @@ bool ECSWorld::is_component_added_to_entity(const ::gcs::ffi::EntityId &entity_i
   return gcs$ffi$cxxbridge1$ECSWorld$is_component_added_to_entity(*this, entity_id, &component);
 }
 
+::rust::Box<::gcs::ffi::EntityId> ECSWorld::create_entity() noexcept {
+  return ::rust::Box<::gcs::ffi::EntityId>::from_raw(gcs$ffi$cxxbridge1$ECSWorld$create_entity(*this));
+}
+
 ::rust::Box<::gcs::ffi::ECSWorld> create_ecs_world() noexcept {
   return ::rust::Box<::gcs::ffi::ECSWorld>::from_raw(gcs$ffi$cxxbridge1$create_ecs_world());
 }
@@ -1109,6 +605,18 @@ bool ECSWorld::is_component_added_to_entity(const ::gcs::ffi::EntityId &entity_i
 } // namespace gcs
 
 extern "C" {
+::gcs::ffi::ComponentData *cxxbridge1$box$gcs$ffi$ComponentData$alloc() noexcept;
+void cxxbridge1$box$gcs$ffi$ComponentData$dealloc(::gcs::ffi::ComponentData *) noexcept;
+void cxxbridge1$box$gcs$ffi$ComponentData$drop(::rust::Box<::gcs::ffi::ComponentData> *ptr) noexcept;
+
+::gcs::ffi::EntityId *cxxbridge1$box$gcs$ffi$EntityId$alloc() noexcept;
+void cxxbridge1$box$gcs$ffi$EntityId$dealloc(::gcs::ffi::EntityId *) noexcept;
+void cxxbridge1$box$gcs$ffi$EntityId$drop(::rust::Box<::gcs::ffi::EntityId> *ptr) noexcept;
+
+::gcs::ffi::ComponentInfo *cxxbridge1$box$gcs$ffi$ComponentInfo$alloc() noexcept;
+void cxxbridge1$box$gcs$ffi$ComponentInfo$dealloc(::gcs::ffi::ComponentInfo *) noexcept;
+void cxxbridge1$box$gcs$ffi$ComponentInfo$drop(::rust::Box<::gcs::ffi::ComponentInfo> *ptr) noexcept;
+
 ::gcs::ffi::ECSWorld *cxxbridge1$box$gcs$ffi$ECSWorld$alloc() noexcept;
 void cxxbridge1$box$gcs$ffi$ECSWorld$dealloc(::gcs::ffi::ECSWorld *) noexcept;
 void cxxbridge1$box$gcs$ffi$ECSWorld$drop(::rust::Box<::gcs::ffi::ECSWorld> *ptr) noexcept;
@@ -1116,6 +624,42 @@ void cxxbridge1$box$gcs$ffi$ECSWorld$drop(::rust::Box<::gcs::ffi::ECSWorld> *ptr
 
 namespace rust {
 inline namespace cxxbridge1 {
+template <>
+::gcs::ffi::ComponentData *Box<::gcs::ffi::ComponentData>::allocation::alloc() noexcept {
+  return cxxbridge1$box$gcs$ffi$ComponentData$alloc();
+}
+template <>
+void Box<::gcs::ffi::ComponentData>::allocation::dealloc(::gcs::ffi::ComponentData *ptr) noexcept {
+  cxxbridge1$box$gcs$ffi$ComponentData$dealloc(ptr);
+}
+template <>
+void Box<::gcs::ffi::ComponentData>::drop() noexcept {
+  cxxbridge1$box$gcs$ffi$ComponentData$drop(this);
+}
+template <>
+::gcs::ffi::EntityId *Box<::gcs::ffi::EntityId>::allocation::alloc() noexcept {
+  return cxxbridge1$box$gcs$ffi$EntityId$alloc();
+}
+template <>
+void Box<::gcs::ffi::EntityId>::allocation::dealloc(::gcs::ffi::EntityId *ptr) noexcept {
+  cxxbridge1$box$gcs$ffi$EntityId$dealloc(ptr);
+}
+template <>
+void Box<::gcs::ffi::EntityId>::drop() noexcept {
+  cxxbridge1$box$gcs$ffi$EntityId$drop(this);
+}
+template <>
+::gcs::ffi::ComponentInfo *Box<::gcs::ffi::ComponentInfo>::allocation::alloc() noexcept {
+  return cxxbridge1$box$gcs$ffi$ComponentInfo$alloc();
+}
+template <>
+void Box<::gcs::ffi::ComponentInfo>::allocation::dealloc(::gcs::ffi::ComponentInfo *ptr) noexcept {
+  cxxbridge1$box$gcs$ffi$ComponentInfo$dealloc(ptr);
+}
+template <>
+void Box<::gcs::ffi::ComponentInfo>::drop() noexcept {
+  cxxbridge1$box$gcs$ffi$ComponentInfo$drop(this);
+}
 template <>
 ::gcs::ffi::ECSWorld *Box<::gcs::ffi::ECSWorld>::allocation::alloc() noexcept {
   return cxxbridge1$box$gcs$ffi$ECSWorld$alloc();

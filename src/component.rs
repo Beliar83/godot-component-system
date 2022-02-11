@@ -1,3 +1,4 @@
-pub mod component_data;
-pub mod component_definition;
-pub mod component_value;
+pub(crate) mod component_data;
+pub(crate) mod component_definition;
+pub(crate) mod component_info;
+pub(crate) mod component_value;
