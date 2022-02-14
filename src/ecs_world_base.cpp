@@ -35,3 +35,20 @@ void ECSWorldBase::register_entity(Ref<Entity> entity) {
         ERR_PRINT(error.what());
     }
 }
+
+Ref<ComponentInfo> ECSWorldBase::register_script_component(const StringName &name, Ref<Script> resource) {
+    auto property_list = List<PropertyInfo>();
+    resource->get_script_property_list(&property_list);
+    auto definition = gcs::ffi::create_component_definition();
+    for (int i=0; i < property_list.size(); ++i) {
+        auto field_definition = gcs::ffi::create_component_field_definition();
+        auto property_info = property_list[i];
+        field_definition.name = godot_string_to_rust_string(property_info.name);
+        field_definition.field_type = property_info.type;
+        definition->add_field(field_definition);
+    }
+    auto definition_object = dynamic_cast<ComponentDefinition *>(ClassDB::creator<ComponentDefinition>());
+    definition_object->componentDefinition.swap(definition);
+
+    return register_component(name, definition_object);
+}
