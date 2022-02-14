@@ -19,6 +19,7 @@ public:
     virtual Ref<ComponentInfo> register_component(const StringName &name, const Ref<ComponentDefinition> &componentDefinition) = 0;
     virtual Ref<ComponentInfo> register_script_component(const StringName &name, Ref<Script> resource) = 0;
     virtual Ref<Entity> create_entity() = 0;
+    virtual PoolStringArray get_components_of_entity(Ref<Entity> entity) = 0;
     virtual void register_entity(Ref<Entity> entity) = 0;
 };
 

@@ -65,6 +65,8 @@ pub mod ffi {
             component: String,
         ) -> bool;
 
+        fn get_components_of_entity(self: &ECSWorld, entity_id: &EntityId) -> Result<Vec<String>>;
+
         fn create_entity(self: &mut ECSWorld) -> Box<EntityId>;
 
         pub fn create_ecs_world() -> Box<ECSWorld>;
@@ -82,6 +84,21 @@ pub mod ffi {
         type ComponentValue = crate::component::component_value::ComponentValue;
 
         pub type Variant = crate::godot::variant::ffi::Variant;
+    }
+}
+
+#[derive(PartialEq, Debug)]
+pub enum GetComponentsOfEntityError {
+    EntityNotFound,
+}
+
+impl Display for GetComponentsOfEntityError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            GetComponentsOfEntityError::EntityNotFound => {
+                write!(f, "Entity with that id is was not found")
+            }
+        }
     }
 }
 
@@ -159,7 +176,7 @@ impl ECSWorld {
             };
             self.component_definitions
                 .entry(info)
-                .or_insert(component_definition.clone());
+                .or_insert_with(|| component_definition.clone());
             entry.insert(info);
             self.components.insert(name.clone(), Vec::new());
             Result::Ok(Box::new(info))
@@ -219,7 +236,7 @@ impl ECSWorld {
         component: String,
         data: &ComponentData,
     ) -> Result<(), SetComponentDataError> {
-        if !self.entities.contains(&entity_id) {
+        if !self.entities.contains(entity_id) {
             Err(EntityNotFound)
         } else if !self.components.contains_key(&component) {
             Err(ComponentNotFound)
@@ -236,7 +253,7 @@ impl ECSWorld {
 
             let stored_data = self
                 .components_of_entity
-                .get_mut(&entity_id)
+                .get_mut(entity_id)
                 .and_then(|c| c.get_mut(&component))
                 .unwrap();
 
@@ -265,6 +282,25 @@ impl ECSWorld {
             .get(entity_id)
             .map_or_else(|| false, |c| c.contains_key(&component))
     }
+
+    pub fn get_components_of_entity(
+        &self,
+        entity_id: &EntityId,
+    ) -> Result<Vec<String>, GetComponentsOfEntityError> {
+        if self.components_of_entity.contains_key(entity_id) {
+            Ok(self
+                .components_of_entity
+                .get(entity_id)
+                .unwrap()
+                .keys()
+                .cloned()
+                .collect())
+        } else if self.entities.contains(entity_id) {
+            Ok(Vec::new())
+        } else {
+            Err(GetComponentsOfEntityError::EntityNotFound)
+        }
+    }
 }
 
 #[cfg(test)]
@@ -275,9 +311,72 @@ mod tests {
     use crate::component::component_value::ComponentValue;
     use crate::ecs_world::ECSWorld;
     use crate::ecs_world::SetComponentDataError::{ComponentNotFound, EntityNotFound};
-    use crate::entity::EntityId;
+    use crate::entity::{create_entity, EntityId};
     use crate::godot::variant::VariantType;
-    use uuid::Uuid;
+
+    #[test]
+    fn get_components_of_entity_returns_components_of_the_passed_entity() {
+        let mut world = ECSWorld::default();
+
+        let field_definition = ComponentFieldDefinition {
+            name: "Integer".to_string(),
+            field_type: VariantType::Int,
+        };
+
+        let mut component_definition = ComponentDefinition::default();
+        component_definition.add_field(field_definition);
+
+        let component_name_1 = "Test";
+        world
+            .register_component(component_name_1.to_string(), &component_definition)
+            .unwrap();
+
+        let component_name_2 = "Test 2";
+        world
+            .register_component(component_name_2.to_string(), &component_definition)
+            .unwrap();
+
+        let entity_id = *world.create_entity();
+
+        world
+            .add_component_to_entity(&entity_id, component_name_1.to_string())
+            .unwrap();
+        world
+            .add_component_to_entity(&entity_id, component_name_2.to_string())
+            .unwrap();
+
+        let components = world.get_components_of_entity(&entity_id);
+        assert!(components.is_ok(), "Should have returned Ok");
+        let components = components.unwrap();
+
+        assert!(
+            components.iter().any(|c| c == component_name_1),
+            "Should have included the {} component in the list",
+            component_name_1
+        );
+        assert!(
+            components.iter().any(|c| c == component_name_2),
+            "Should have included the {} component in the list",
+            component_name_2
+        );
+    }
+
+    #[test]
+    fn get_components_returns_ok_if_entity_exists_but_never_had_components_added() {
+        let mut world = ECSWorld::default();
+        let entity = world.create_entity();
+
+        let components = world.get_components_of_entity(&entity);
+        assert!(components.is_ok());
+    }
+
+    #[test]
+    fn get_components_returns_err_if_entity_does_not_exist() {
+        let world = ECSWorld::default();
+
+        let components = world.get_components_of_entity(&create_entity());
+        assert!(components.is_err());
+    }
 
     #[test]
     fn register_component_adds_new_component_and_creates_a_hash() {

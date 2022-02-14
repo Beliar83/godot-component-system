@@ -29,7 +29,7 @@ Ref<Entity> ECSWorldBase::create_entity() {
 }
 
 void ECSWorldBase::register_entity(Ref<Entity> entity) {
-    try { world->register_entity(*entity->entityId); }
+    try { world->register_entity(entity->get_entity_id()); }
     catch (rust::error& error)
     {
         ERR_PRINT(error.what());
@@ -51,4 +51,20 @@ Ref<ComponentInfo> ECSWorldBase::register_script_component(const StringName &nam
     definition_object->componentDefinition.swap(definition);
 
     return register_component(name, definition_object);
+}
+
+PoolStringArray ECSWorldBase::get_components_of_entity(Ref<Entity> entity) {
+    try {
+        auto array = PoolStringArray();
+        auto components = world->get_components_of_entity(entity->get_entity_id());
+        for (const auto& component : components) {
+            array.push_back(string_name_from_rust_string(component));
+        }
+        return array;
+    }
+    catch (rust::error& error)
+    {
+        ERR_PRINT(error.what());
+        return {};
+    }
 }

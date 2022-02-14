@@ -21,5 +21,6 @@ public:
     Ref<Entity> create_entity() override;
     void register_entity(Ref<Entity> entity) override;
     Ref<ComponentInfo> register_script_component(const StringName &name, Ref<Script> resource) override;
+    PoolStringArray get_components_of_entity(Ref<Entity> entity) override;
 };
 #endif //GODOT_COMPONENT_SYSTEM_GODOT_WORLD_2D_H

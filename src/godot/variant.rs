@@ -18,7 +18,7 @@ pub enum VariantType {
     Transform2D,
     Plan,
     Quat, // 10
-    AABB,
+    Aaab,
     Basis,
     Transform,
 

@@ -34,7 +34,7 @@ pub fn create_component_field_definition() -> ffi::ComponentFieldDefinition {
     ffi::ComponentFieldDefinition::default()
 }
 
-#[derive(Hash, Eq, PartialEq, Debug, Clone)]
+#[derive(Hash, Eq, PartialEq, Debug, Clone, Default)]
 pub struct ComponentDefinition {
     pub fields: Vec<ffi::ComponentFieldDefinition>,
 }
@@ -42,12 +42,6 @@ pub struct ComponentDefinition {
 unsafe impl ExternType for ComponentDefinition {
     type Id = type_id!("gcs::ffi::ComponentDefinition");
     type Kind = cxx::kind::Opaque;
-}
-
-impl Default for ComponentDefinition {
-    fn default() -> Self {
-        Self { fields: Vec::new() }
-    }
 }
 
 impl ComponentDefinition {

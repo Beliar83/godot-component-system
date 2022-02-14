@@ -93,7 +93,7 @@ fn component_value_from_variant(value: &Variant) -> Box<ComponentValue> {
             VariantType::Quat => {
                 unimplemented!()
             }
-            VariantType::AABB => {
+            VariantType::Aaab => {
                 unimplemented!()
             }
             VariantType::Basis => {

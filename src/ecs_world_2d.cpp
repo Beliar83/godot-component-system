@@ -7,6 +7,7 @@ void ECSWorld2D::_bind_methods() {
                          &ECSWorld2D::register_script_component);
     ClassDB::bind_method(D_METHOD("create_entity"), &ECSWorld2D::create_entity);
     ClassDB::bind_method(D_METHOD("register_entity", "entity"), &ECSWorld2D::register_entity);
+    ClassDB::bind_method(D_METHOD("get_components_of_entity", "entity"), &ECSWorld2D::get_components_of_entity);
 }
 
 Ref<ComponentInfo>
@@ -24,4 +25,8 @@ void ECSWorld2D::register_entity(Ref<Entity> entity) {
 
 Ref<ComponentInfo> ECSWorld2D::register_script_component(const StringName &name, Ref<Script> resource) {
     return ECSWorldBase::register_script_component(name, resource);
+}
+
+PoolStringArray ECSWorld2D::get_components_of_entity(Ref<Entity> entity) {
+    return ECSWorldBase::get_components_of_entity(entity);
 }
