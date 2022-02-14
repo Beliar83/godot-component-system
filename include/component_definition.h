@@ -5,13 +5,11 @@
 #include "component_definition.rs.h"
 #include "component_field_definition.h"
 
-class ECSWorld2D;
 class ECSWorldBase;
 
 class ComponentDefinition : public Reference {
 GDCLASS(ComponentDefinition, Reference);
 
-friend class ECSWorld2D;
 friend class ECSWorldBase;
 private:
     ::rust::box<gcs::ffi::ComponentDefinition> componentDefinition;

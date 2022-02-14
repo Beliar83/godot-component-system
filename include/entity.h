@@ -3,11 +3,11 @@
 #include "core/reference.h"
 #include "ecs_world.rs.h"
 
-class ECSWorld2D;
+class ECSWorldBase;
 
 class Entity : public Reference {
     GDCLASS(Entity, Reference)
-    friend class ECSWorld2D;
+    friend class ECSWorldBase;
 
 private:
     rust::box<gcs::ffi::EntityId> entityId;

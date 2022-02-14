@@ -4,11 +4,11 @@
 #include "cxx.h"
 #include "ecs_world.rs.h"
 
-class ECSWorld2D;
+class ECSWorldBase;
 
 class ComponentInfo : public Reference {
     GDCLASS(ComponentInfo, Reference)
-    friend class ECSWorld2D;
+    friend class ECSWorldBase;
 private:
     rust::box<gcs::ffi::ComponentInfo> componentInfo;
 

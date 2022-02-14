@@ -57,6 +57,7 @@ src_list = ['register_types.cpp',
             'src/component_field_definition.cpp',
             'src/component_definition.cpp',
             'src/component_info.cpp',
+            'src/ecs_world_base.cpp',
             'src/ecs_world_2d.cpp',
             'src/entity.cpp',
             ]

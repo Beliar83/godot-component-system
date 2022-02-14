@@ -5,6 +5,7 @@
 #include "component_field_definition.h"
 #include "component_definition.h"
 #include "component_info.h"
+#include "ecs_world_base.h"
 
 void register_godot_component_system_types() {
     ClassDB::register_class<GodotComponent>();
