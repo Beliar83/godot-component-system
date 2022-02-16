@@ -1,7 +1,7 @@
 #ifndef GODOT_COMPONENT_SYSTEM_ENTITY_H
 #define GODOT_COMPONENT_SYSTEM_ENTITY_H
 #include "core/reference.h"
-#include "ecs_world.rs.h"
+#include "gcs-cxx/src/ecs_world.rs.h"
 
 class ECSWorldBase;
 

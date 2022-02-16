@@ -1,7 +1,7 @@
 #ifndef GODOT_COMPONENT_SYSTEM_VARIANT_H
 #define GODOT_COMPONENT_SYSTEM_VARIANT_H
 #include "core/variant.h"
-#include "cxx.h"
+#include "rust/cxx.h"
 
 namespace gcs {
     namespace ffi {

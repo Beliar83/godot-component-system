@@ -1,7 +1,7 @@
 #ifndef GODOT_COMPONENT_SYSTEM_COMPONENT_FIELD_DEFINITION_H
 #define GODOT_COMPONENT_SYSTEM_COMPONENT_FIELD_DEFINITION_H
 #include "core/reference.h"
-#include "component_definition.rs.h"
+#include "gcs-cxx/src/component/component_definition.rs.h"
 
 
 class ComponentFieldDefinition : public Reference {

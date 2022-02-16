@@ -3,12 +3,12 @@
 
 #include "scene/2d/node_2d.h"
 #include "scene/3d/spatial.h"
-#include "cxx.h"
-#include "ecs_world.rs.h"
+#include "rust/cxx.h"
+#include "gcs-cxx/src/ecs_world.rs.h"
 #include "component_info.h"
 #include "component_definition.h"
 #include "entity.h"
-#include "godot/string.h" // NOLINT(modernize-deprecated-headers)
+#include "gcs-cxx/include/godot/string.h" // NOLINT(modernize-deprecated-headers)
 #include "ecs_world_base.h"
 
 class ECSWorld2D : public Node2D, ECSWorldBase {

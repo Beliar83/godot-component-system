@@ -1,7 +1,7 @@
 #include <core/ustring.h>
 #include <string>
-#include "cxx.h"
-#include "godot/string.h" // NOLINT(modernize-deprecated-headers)
+#include "rust/cxx.h"
+#include "gcs-cxx/include/godot/string.h" // NOLINT(modernize-deprecated-headers)
 #include <core/string_name.h>
 
 rust::string godot_string_to_rust_string(const String &value) {

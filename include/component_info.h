@@ -1,8 +1,8 @@
 #ifndef GODOT_COMPONENT_SYSTEM_COMPONENT_INFO_H
 #define GODOT_COMPONENT_SYSTEM_COMPONENT_INFO_H
 #include "core/reference.h"
-#include "cxx.h"
-#include "ecs_world.rs.h"
+#include "rust/cxx.h"
+#include "gcs-cxx/src/ecs_world.rs.h"
 
 class ECSWorldBase;
 

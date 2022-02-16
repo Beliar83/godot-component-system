@@ -2,8 +2,8 @@
 #define GODOT_COMPONENT_SYSTEM_COMPONENT_H
 #include <vector>
 #include "core/reference.h"
-#include "cxx.h"
-#include "godot/variant.h"
+#include "rust/cxx.h"
+#include "gcs-cxx/include/godot/variant.h"
 
 class GodotComponent : public Reference {
     GDCLASS(GodotComponent, Reference);
