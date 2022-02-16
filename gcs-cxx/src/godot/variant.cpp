@@ -1,5 +1,5 @@
 #include "godot/variant.h"
-#include "godot/string.h" // NOLINT(modernize-deprecated-headers)
+#include "gcs-cxx/include/godot/string.h" // NOLINT(modernize-deprecated-headers)
 
 namespace gcs {
     namespace ffi {

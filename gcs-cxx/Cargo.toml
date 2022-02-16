@@ -1,5 +1,5 @@
 [package]
-name = "godot-component-system"
+name = "gcs-cxx"
 version = "0.1.0"
 edition = "2021"
 
@@ -8,5 +8,9 @@ edition = "2021"
 crate-type = ["staticlib"]
 
 [dependencies]
-gcs = { path = "gcs"}
-gcs-cxx = { path = "gcs-cxx"}
+gcs = {path = "../gcs"}
+cxx = "1.0"
+uuid = {version = "0.8", features=["serde", "v4", "wasm-bindgen"]}
+
+[build-dependencies]
+cxx-build = "1.0"

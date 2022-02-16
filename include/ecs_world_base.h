@@ -3,8 +3,8 @@
 
 
 #include <core/script_language.h>
-#include "cxx.h"
-#include "ecs_world.rs.h"
+#include "rust/cxx.h"
+#include "gcs-cxx/src/ecs_world.rs.h"
 #include "component_info.h"
 #include "component_definition.h"
 #include "entity.h"

@@ -2,7 +2,7 @@
 #define GODOT_COMPONENT_SYSTEM_COMPONENT_DEFINITION_H
 
 #include "core/reference.h"
-#include "component_definition.rs.h"
+#include "gcs-cxx/src/component/component_definition.rs.h"
 #include "component_field_definition.h"
 
 class ECSWorldBase;
