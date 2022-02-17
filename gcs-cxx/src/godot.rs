@@ -1,1 +1,2 @@
-pub mod variant;
+pub(crate) mod error;
+pub(crate) mod variant;

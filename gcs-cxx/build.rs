@@ -7,11 +7,19 @@ fn main() {
     let platform = match platform {
         Ok(platform) => platform,
         Err(err) => {
-            panic!("Could not get platform: {}", err)
+            panic!("Could not read GODOT_PLATFORM: {}", err)
         }
     };
 
-    let platform_include = format!("../../../platform/{}", platform);
+    let godot_path = env::var("GODOT_PATH");
+    let godot_path = match godot_path {
+        Ok(path) => path,
+        Err(err) => {
+            panic!("Could not read GODOT_PATH: {}", err)
+        }
+    };
+
+    let platform_include_win = format!("{godot_path}/platform/{}", platform);
     cxx_build::bridges(vec![
         "src/godot/variant.rs",
         "src/component/component_value.rs",
@@ -19,10 +27,11 @@ fn main() {
         "src/ecs_world.rs",
     ])
     .include(Path::new("include"))
-    .include(Path::new("../../../"))
-    .include(Path::new(&platform_include))
+    .include(Path::new(&godot_path))
+    .include(Path::new(&platform_include_win))
     .files(vec!["src/godot/string.cpp", "src/godot/variant.cpp"])
     .flag_if_supported("-std=g++14")
+    .define("RUST_CXX_NO_EXCEPTIONS", None)
     .compile("godot-component-system");
 
     println!("cargo:rerun-if-changed=src/godot/variant.rs");

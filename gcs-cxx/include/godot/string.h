@@ -1,6 +1,6 @@
 #ifndef GODOT_COMPONENT_SYSTEM_STRING_H
 #define GODOT_COMPONENT_SYSTEM_STRING_H
-
+#include "core/string_name.h"
 #include "rust/cxx.h"
 
 rust::string godot_string_to_rust_string(const String& value);

@@ -21,7 +21,7 @@ impl Display for GetComponentsOfEntityError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             GetComponentsOfEntityError::EntityNotFound => {
-                write!(f, "Entity with that id is was not found")
+                write!(f, "Entity with that id was not found")
             }
         }
     }
@@ -38,7 +38,7 @@ impl Display for SetComponentDataError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             EntityNotFound => {
-                write!(f, "Entity with that id is was not found")
+                write!(f, "Entity with that id was not found")
             }
             ComponentNotFound => {
                 write!(f, "Component with that name is already registered")
@@ -308,7 +308,7 @@ mod tests {
             "".to_string()
         }
 
-        fn parse_str(_input: &str) -> Result<Box<Self>, String>
+        fn parse_str(_input: &str) -> Result<Self, String>
         where
             Self: Sized,
         {
@@ -340,7 +340,7 @@ mod tests {
             *self = TestComponentValue::Nil;
         }
 
-        fn get_nil(&self) -> () {}
+        fn get_nil(&self) {}
 
         fn set_int(&mut self, value: i64) {
             *self = TestComponentValue::Int(value)
@@ -352,10 +352,7 @@ mod tests {
                 TestComponentValue::Int(value) => *value,
                 TestComponentValue::String(value) => {
                     let result = str::parse::<i64>(value);
-                    match result {
-                        Ok(value) => value,
-                        Err(_) => 0,
-                    }
+                    result.unwrap_or(0)
                 }
                 TestComponentValue::Bool(value) => {
                     if *value {
@@ -406,10 +403,7 @@ mod tests {
                 TestComponentValue::Int(value) => *value as f64,
                 TestComponentValue::String(value) => {
                     let result = str::parse::<f64>(value);
-                    match result {
-                        Ok(value) => value,
-                        Err(_) => 0.0,
-                    }
+                    result.unwrap_or(0.0)
                 }
                 TestComponentValue::Bool(value) => {
                     if *value {

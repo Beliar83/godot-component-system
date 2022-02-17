@@ -20,17 +20,17 @@ else:
     libpath += '/debug'
     target = 'debug'
 
-env['ENV']['GODOT_PLATFORM'] = env['platform'];
-
-emcc_rust_env = {
+rust_env = {
     **os.environ,
-    "EMCC_CFLAGS": str.join(' ', env['CXXFLAGS']),
+    'GODOT_PLATFORM': env['platform'],
+    'GODOT_PATH': Dir('#').abspath,
+    'EMCC_CFLAGS': str.join(' ', env['CXXFLAGS']),
 }
 
 print('godot-component-system: Compiling rust library')
-process = subprocess.run(command + " -p gcs-cxx", shell=True, env=emcc_rust_env)
+process = subprocess.run(command + " -p gcs-cxx", shell=True, env=rust_env)
 process.check_returncode()
-process = subprocess.run(command, shell=True, env=emcc_rust_env)
+process = subprocess.run(command, shell=True, env=rust_env)
 process.check_returncode()
 
 src_list = ['register_types.cpp',
@@ -48,7 +48,7 @@ libsuffix = env['LIBSUFFIX']
 
 env_godot_component_system.add_source_files(env.modules_sources, src_list)
 env_godot_component_system.Append(CPPPATH=['include'])
-env_godot_component_system.Append(CPPPATH=['gcs-cxx/target/cxxbridge'])
+env_godot_component_system.Append(CPPPATH=['target/cxxbridge'])
 env_godot_component_system.Append(CPPPATH=['.'])
 
 

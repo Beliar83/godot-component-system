@@ -68,12 +68,10 @@ enum SetComponentDataError {
     DataInUse
 }
 
-class World {
-    component_definitions: HashMap<ComponentInfo, Vec<ComponentDefinition>>
-    component_names: HashMap<String, ComponentInfo>
-    entities: Vec<EntityId>
-    components: HashMap<String, Vec<Rc<RefCell<ComponentData>>>>
-    components_of_entity: HashMap<EntityId, HashMap<String, Rc<RefCell<ComponentData>>>>
+class ErrorResult<T> {
+	pub(crate) result: Box<T>,
+	pub(crate) error: String,
+}
 
 class World<TComponentDefinition, TComponentData, TComponentInfo> {
     component_definitions: HashMap<TComponentInfo, TComponentDefinition>
