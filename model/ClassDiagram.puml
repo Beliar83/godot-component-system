@@ -12,38 +12,44 @@ ComponentFieldDefinition <--o ComponentDefinition
 
 enum VariantType
 
-class ComponentFieldDefinition {
-    name: String
-    type: VariantType
+interface ComponentFieldDefinition {
+    get_type(&self) -> VariantType
+    get_name(&self) -> String
 }
 
-class ComponentDefinition {
-    fields: Vec<ComponentFieldDefinition>
+interface ComponentDefinition {
+    FieldDefinition: ComponentFieldDefinition
+    get_fields(&self) -> Vec<Self::FieldDefinition>
+    add_field(&mut self, field_definition: Self::FieldDefinition)
 }
 
-class ComponentInfo {
-    hash: u64
+interface ComponentInfo {
+    get_hash(&self) -> u64
+    create(hash: u64) -> Self
 }
 
-class ComponentData {
-    entity: EntityId
-    fields: HashMap<String, ComponentValue>
+interface ComponentData {
+    EntityIdType: EntityId
+    ComponentValueType: ComponentValue
 
-    new() -> ComponentData
-    get_entity(&self) -> EntityId
-
-    get_field(&self, field: String) -> &ComponentValue
-    set_field(&mut self, field: String, value; &ComponentValue)
+    new(entity: Self::EntityIdType) -> Self
+    get_entity(&self) -> Self::EntityIdType
+    get_field(&self, field: String) -> &Self::ComponentValueType
+    set_field(&mut self, field: String, value: &Self::ComponentValueType)
 }
 
-enum ComponentValue {
-    Nil
-    Int: i64
-    String: String
-    Bool: bool
-    Real: f64
-
-    default() -> ComponentValue
+interface ComponentValue {
+    get_type(&self) -> VariantType
+    set_nil(&mut self)
+    get_nil(&self) -> ()
+    set_int(&mut self, value: i64)
+    get_int(&self) -> i64
+    set_string(&mut self, value: String)
+    get_string(&self) -> String
+    set_bool(&mut self, value: bool)
+    get_bool(&self) -> bool
+    set_real(&mut self, value: f64)
+    get_real(&self) -> f64
 }
 
 class EntityId {
@@ -69,12 +75,20 @@ class World {
     components: HashMap<String, Vec<Rc<RefCell<ComponentData>>>>
     components_of_entity: HashMap<EntityId, HashMap<String, Rc<RefCell<ComponentData>>>>
 
-    register_component(&mut self, name: String, component_definition: ComponentDefinition) -> Result<Box<ComponentInfo>, String>
-    create_entity(&mut self) -> Box<EntityId>
-    register_entity(&mut self, id: &EntityId) -> Result<(), RegisterEntityError>
-    add_component_to_entity(&mut self, entity_id: &EntityId, component: String) -> Result<(), String>
-    set_component_data(&mut self, entity_id: &EntityId, component: String, data: &ComponentData) -> Result<(), SetComponentDataError>
-    is_component_added_to_entity(&self, entity_id: &EntityId, component: String) -> bool;
+class World<TComponentDefinition, TComponentData, TComponentInfo> {
+    component_definitions: HashMap<TComponentInfo, TComponentDefinition>
+    component_names: HashMap<String, TComponentInfo>
+    entities: Vec<TComponentData::EntityIdType>
+    components: HashMap<String, Vec<Rc<RefCell<TComponentData>>>>
+    components_of_entity: HashMap<TComponentData::EntityIdType, HashMap<String, Rc<RefCell<TComponentData>>>>
+
+    register_component(&mut self, name: String, component_definition: TComponentDefinition) -> Result<TComponentInfo, String>
+    create_entity(&mut self) -> Box<TComponentData::EntityIdType> -> Box<TComponentData::EntityIdType>
+    register_entity(&mut self, id: &TComponentData::EntityIdType) -> Result<(), RegisterEntityError>
+    add_component_to_entity(&mut self, entity_id: &TComponentData::EntityIdType, component: String) -> Result<(), String>
+    set_component_data(&mut self, entity_id: &TComponentData::EntityIdType, component: String, data: &TComponentData) -> Result<(), SetComponentDataError>
+    is_component_added_to_entity(&self, entity_id: &TComponentData::EntityIdType, component: String) -> bool
+    get_components_of_entity(&self, entity_id: &TComponentData::EntityIdType) -> Result<Vec<String>, GetComponentsOfEntityError>
 }
 
 @enduml
