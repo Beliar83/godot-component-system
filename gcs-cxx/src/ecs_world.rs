@@ -2,7 +2,7 @@ use std::string::String;
 
 use cxx::{type_id, ExternType};
 
-use gcs::ecs_world::{create_ecs_world, ECSWorld};
+use gcs::world::ecs_world::{create_ecs_world, ECSWorld};
 
 use crate::component::component_data::create_component_data;
 use crate::component::component_data::CXXComponentData;

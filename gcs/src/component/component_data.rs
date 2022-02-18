@@ -1,7 +1,7 @@
 use crate::component::component_value::ComponentValue;
 use crate::entity::EntityId;
 
-pub trait ComponentData: Default {
+pub trait ComponentData: Default + Clone {
     type EntityIdType: EntityId;
     type ComponentValueType: ComponentValue;
 

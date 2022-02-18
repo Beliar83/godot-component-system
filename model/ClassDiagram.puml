@@ -68,9 +68,14 @@ enum SetComponentDataError {
     DataInUse
 }
 
-class ErrorResult<T> {
-	pub(crate) result: Box<T>,
-	pub(crate) error: String,
+enum GetComponentOfEntityError {
+    EntityNotFound,
+    ComponentNotFound,
+    ComponentNotInEntity,
+}
+
+enum GetComponentDataError {
+    ComponentNotFound
 }
 
 class World<TComponentDefinition, TComponentData, TComponentInfo> {
@@ -81,12 +86,15 @@ class World<TComponentDefinition, TComponentData, TComponentInfo> {
     components_of_entity: HashMap<TComponentData::EntityIdType, HashMap<String, Rc<RefCell<TComponentData>>>>
 
     register_component(&mut self, name: String, component_definition: TComponentDefinition) -> Result<TComponentInfo, String>
+    get_component_data(&self, name: String) -> Result<Vec<TComponentData>, GetComponentDataError>
+    has_component(&self, name: String) -> bool
     create_entity(&mut self) -> Box<TComponentData::EntityIdType> -> Box<TComponentData::EntityIdType>
     register_entity(&mut self, id: &TComponentData::EntityIdType) -> Result<(), RegisterEntityError>
     add_component_to_entity(&mut self, entity_id: &TComponentData::EntityIdType, component: String) -> Result<(), String>
     set_component_data(&mut self, entity_id: &TComponentData::EntityIdType, component: String, data: &TComponentData) -> Result<(), SetComponentDataError>
     is_component_added_to_entity(&self, entity_id: &TComponentData::EntityIdType, component: String) -> bool
-    get_components_of_entity(&self, entity_id: &TComponentData::EntityIdType) -> Result<Vec<String>, GetComponentsOfEntityError>
+    get_components_of_entity(&self, entity_id: &TComponentData::EntityIdType) -> Result<Vec<String>, GetComponentOfEntityError>
+    get_component_of_entity(&self, entity_id: &TComponentData::EntityIdType, component: String) -> Result<TComponentData, GetComponentOfEntityError>
 }
 
 @enduml

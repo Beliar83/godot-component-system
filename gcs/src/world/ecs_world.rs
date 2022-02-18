@@ -1,69 +1,19 @@
-use std::cell::RefCell;
+use std::borrow::Borrow;
+use std::cell::{Ref, RefCell};
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
-use std::fmt::{Display, Formatter};
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 
 use crate::component::component_data::ComponentData;
 use crate::component::component_definition::{ComponentDefinition, ComponentFieldDefinition};
 use crate::component::component_info::ComponentInfo;
-use crate::ecs_world::RegisterEntityError::AlreadyRegistered;
-use crate::ecs_world::SetComponentDataError::{ComponentNotFound, DataInUse, EntityNotFound};
 use crate::entity::EntityId;
-
-#[derive(PartialEq, Debug)]
-pub enum GetComponentsOfEntityError {
-    EntityNotFound,
-}
-
-impl Display for GetComponentsOfEntityError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            GetComponentsOfEntityError::EntityNotFound => {
-                write!(f, "Entity with that id was not found")
-            }
-        }
-    }
-}
-
-#[derive(PartialEq, Debug)]
-pub enum SetComponentDataError {
-    EntityNotFound,
-    ComponentNotFound,
-    DataInUse,
-}
-
-impl Display for SetComponentDataError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            EntityNotFound => {
-                write!(f, "Entity with that id was not found")
-            }
-            ComponentNotFound => {
-                write!(f, "Component with that name is already registered")
-            }
-            DataInUse => {
-                write!(f, "The data is already exclusively borrowed")
-            }
-        }
-    }
-}
-
-#[derive(PartialEq, Debug)]
-pub enum RegisterEntityError {
-    AlreadyRegistered,
-}
-
-impl Display for RegisterEntityError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            AlreadyRegistered => {
-                write!(f, "Entity with that id is already registered")
-            }
-        }
-    }
-}
+use crate::world::errors::RegisterEntityError::AlreadyRegistered;
+use crate::world::errors::SetComponentDataError::{ComponentNotFound, DataInUse, EntityNotFound};
+use crate::world::errors::{
+    GetComponentDataError, GetComponentOfEntityError, RegisterEntityError, SetComponentDataError,
+};
 
 #[derive(Default)]
 pub struct ECSWorld<
@@ -120,6 +70,31 @@ impl<
         }
     }
 
+    pub fn get_component_data(
+        &self,
+        name: String,
+    ) -> Result<Vec<TComponentData>, GetComponentDataError> {
+        let component_data = self.components.get(&name);
+        match component_data {
+            None => Err(GetComponentDataError::ComponentNotFound),
+            Some(data) => {
+                let data = data
+                    .iter()
+                    .map(|c| {
+                        let c: &RefCell<TComponentData> = c.borrow();
+                        let c: Ref<TComponentData> = c.borrow();
+                        c.clone()
+                    })
+                    .collect();
+                Ok(data)
+            }
+        }
+    }
+
+    pub fn has_component(&self, name: String) -> bool {
+        self.component_names.contains_key(&name)
+    }
+
     pub fn create_entity(&mut self) -> Box<TComponentData::EntityIdType> {
         let id = EntityId::create();
         self.entities.push(id);
@@ -138,19 +113,17 @@ impl<
         }
     }
 
-    pub fn add_component_to_entity(
+    fn add_component_to_entity(
         &mut self,
         entity_id: &TComponentData::EntityIdType,
         component: String,
     ) -> Result<(), String> {
-        let components = self.components.get_mut(&component).unwrap();
-
-        if components
-            .iter()
-            .any(|d| d.borrow().get_entity() == *entity_id)
-        {
+        if !self.has_component(component.clone()) {
+            Err("Component is not registered".to_string())
+        } else if self.is_component_added_to_entity(&entity_id, component.clone()) {
             Err("Component was already added for that entity".to_string())
         } else {
+            let components = self.components.get_mut(&component).unwrap();
             let value = RefCell::new(TComponentData::new(*entity_id));
             let data = Rc::new(value);
             components.push(data.clone());
@@ -225,7 +198,7 @@ impl<
     pub fn get_components_of_entity(
         &self,
         entity_id: &TComponentData::EntityIdType,
-    ) -> Result<Vec<String>, GetComponentsOfEntityError> {
+    ) -> Result<Vec<String>, GetComponentOfEntityError> {
         if self.components_of_entity.contains_key(entity_id) {
             Ok(self
                 .components_of_entity
@@ -237,7 +210,33 @@ impl<
         } else if self.entities.contains(entity_id) {
             Ok(Vec::new())
         } else {
-            Err(GetComponentsOfEntityError::EntityNotFound)
+            Err(GetComponentOfEntityError::EntityNotFound)
+        }
+    }
+    pub fn get_component_of_entity(
+        &self,
+        entity_id: &TComponentData::EntityIdType,
+        component: String,
+    ) -> Result<TComponentData, GetComponentOfEntityError> {
+        match self.components_of_entity.get(entity_id) {
+            None => {
+                if self.entities.contains(entity_id) {
+                    Err(GetComponentOfEntityError::ComponentNotInEntity)
+                } else {
+                    Err(GetComponentOfEntityError::EntityNotFound)
+                }
+            }
+            Some(components) => {
+                let data = components.get(&component);
+                match data {
+                    None => Err(GetComponentOfEntityError::ComponentNotInEntity),
+                    Some(data) => {
+                        let data: &RefCell<TComponentData> = data.borrow();
+                        let data = data.borrow();
+                        Ok(data.clone())
+                    }
+                }
+            }
         }
     }
 }
@@ -249,11 +248,13 @@ mod tests {
     use crate::component::component_definition::ComponentFieldDefinition;
     use crate::component::component_info::ComponentInfo;
     use crate::component::component_value::ComponentValue;
-    use crate::ecs_world;
-    use crate::ecs_world::ECSWorld;
-    use crate::ecs_world::SetComponentDataError::{ComponentNotFound, EntityNotFound};
     use crate::entity::EntityId;
     use crate::variant::VariantType;
+    use crate::world::ecs_world;
+    use crate::world::ecs_world::ECSWorld;
+    use crate::world::errors::SetComponentDataError::{ComponentNotFound, EntityNotFound};
+    use crate::world::errors::{GetComponentDataError, GetComponentOfEntityError};
+    use std::borrow::Borrow;
     use std::collections::HashMap;
 
     #[derive(Default, Clone, Hash, Debug, PartialEq, Eq)]
@@ -423,7 +424,7 @@ mod tests {
         }
     }
 
-    #[derive(Default)]
+    #[derive(Default, Clone)]
     pub struct TestComponentData {
         pub entity: TestEntityId,
         pub fields: HashMap<
@@ -475,6 +476,147 @@ mod tests {
     }
 
     #[test]
+    fn get_component_of_entity_returns_data_of_added_component() {
+        let mut world =
+            ECSWorld::<TestComponentDefinition, TestComponentData, TestComponentInfo>::default();
+
+        let component_name = "Test";
+        world
+            .register_component(
+                component_name.to_string(),
+                TestComponentDefinition::default(),
+            )
+            .unwrap();
+        let entity = world.create_entity();
+        world
+            .add_component_to_entity(&entity, component_name.to_string())
+            .unwrap();
+
+        let result = world.get_component_of_entity(entity.borrow(), component_name.to_string());
+        assert!(result.is_ok(), "Should have returned an Ok result");
+    }
+
+    #[test]
+    fn get_component_of_entity_returns_entity_not_found_when_the_entity_is_not_registered() {
+        let world =
+            ECSWorld::<TestComponentDefinition, TestComponentData, TestComponentInfo>::default();
+        let result = world.get_component_of_entity(&TestEntityId::create(), "Test".to_string());
+        assert!(
+            matches!(result, Err(GetComponentOfEntityError::EntityNotFound)),
+            "Should have returned error with EntityNotFound"
+        );
+    }
+
+    #[test]
+    fn get_component_of_entity_returns_component_not_in_entity_when_the_entity_never_had_components(
+    ) {
+        let mut world =
+            ECSWorld::<TestComponentDefinition, TestComponentData, TestComponentInfo>::default();
+        let entity_id = world.create_entity();
+        let result = world.get_component_of_entity(&entity_id, "Test".to_string());
+        assert!(
+            matches!(result, Err(GetComponentOfEntityError::ComponentNotInEntity)),
+            "Should have returned error with ComponentNotInEntity"
+        );
+    }
+
+    #[test]
+    fn get_component_of_entity_returns_component_not_in_entity_when_the_entity_does_not_have_the_component(
+    ) {
+        let mut world =
+            ECSWorld::<TestComponentDefinition, TestComponentData, TestComponentInfo>::default();
+        let entity_id = world.create_entity();
+        let component_name = "Test";
+        world
+            .register_component(
+                component_name.to_string(),
+                TestComponentDefinition::default(),
+            )
+            .unwrap();
+        world
+            .add_component_to_entity(&entity_id, component_name.to_string())
+            .unwrap();
+        let result = world
+            .get_component_of_entity(&entity_id, format!("not_{}", component_name).to_string());
+        assert!(
+            matches!(result, Err(GetComponentOfEntityError::ComponentNotInEntity)),
+            "Should have returned error with ComponentNotInEntity"
+        );
+    }
+
+    #[test]
+    fn get_component_data_returns_all_data_of_a_registered_component() {
+        let mut world =
+            ECSWorld::<TestComponentDefinition, TestComponentData, TestComponentInfo>::default();
+        let component_name = "Test";
+        let field_name = "TestField";
+
+        let mut definition = TestComponentDefinition::default();
+        let field_definition = TestComponentFieldDefinition {
+            field_type: VariantType::Int,
+            name: field_name.to_string(),
+        };
+        definition.add_field(field_definition);
+        world
+            .register_component(component_name.to_string(), definition)
+            .unwrap();
+
+        let entity_id = world.create_entity();
+        let mut data = TestComponentData::new(*entity_id);
+        data.set_field(field_name.to_string(), &TestComponentValue::Int(9));
+
+        let field_name = "TestField";
+        world
+            .set_component_data(&entity_id, component_name.to_string(), &data)
+            .unwrap();
+        let mut entity_id = TestEntityId::create();
+        entity_id.id = 1;
+
+        world.register_entity(&entity_id).unwrap();
+        let mut data = TestComponentData::new(entity_id);
+        data.set_field(field_name.to_string(), &TestComponentValue::Int(27));
+        world
+            .set_component_data(&entity_id, component_name.to_string(), &data)
+            .unwrap();
+        let result = world.get_component_data(component_name.to_string());
+        assert!(result.is_ok(), "Should have returned Ok result");
+        let components = result.unwrap();
+        assert_eq!(2, components.len());
+
+        for data in components {
+            let _value = data.get_field(field_name.to_string());
+            match data.entity.id {
+                0 => {
+                    assert!(
+                        matches!(TestComponentValue::Int(9), _value),
+                        "TestField Value for first entity should have been 9"
+                    )
+                }
+                1 => {
+                    assert!(
+                        matches!(TestComponentValue::Int(27), _value),
+                        "Value for first entity should have been 27"
+                    )
+                }
+                _ => {}
+            }
+        }
+    }
+
+    #[test]
+    fn get_component_data_returns_component_not_found_when_the_component_was_not_registered() {
+        let world =
+            ECSWorld::<TestComponentDefinition, TestComponentData, TestComponentInfo>::default();
+        let component_name = "Test";
+        let result = world.get_component_data(component_name.to_string());
+
+        assert!(
+            matches!(result, Err(GetComponentDataError::ComponentNotFound)),
+            "Should have returned ComponentNotFound"
+        );
+    }
+
+    #[test]
     fn get_components_of_entity_returns_components_of_the_passed_entity() {
         let mut world =
             ECSWorld::<TestComponentDefinition, TestComponentData, TestComponentInfo>::default();
@@ -523,7 +665,7 @@ mod tests {
     }
 
     #[test]
-    fn get_components_returns_ok_if_entity_exists_but_never_had_components_added() {
+    fn get_components_of_entity_returns_ok_if_entity_exists_but_never_had_components_added() {
         let mut world =
             ECSWorld::<TestComponentDefinition, TestComponentData, TestComponentInfo>::default();
         let entity = world.create_entity();
@@ -533,7 +675,7 @@ mod tests {
     }
 
     #[test]
-    fn get_components_returns_err_if_entity_does_not_exist() {
+    fn get_components_of_entity_returns_err_if_entity_does_not_exist() {
         let world =
             ECSWorld::<TestComponentDefinition, TestComponentData, TestComponentInfo>::default();
 
@@ -706,10 +848,13 @@ mod tests {
             "Should have added a component to components"
         );
 
-        let data = components.first().unwrap();
+        let data = world
+            .get_component_of_entity(&entity_id, component_name.to_string())
+            .unwrap();
+
         assert_eq!(
             entity_id,
-            data.borrow().get_entity(),
+            data.get_entity(),
             "Added component should belong to the entity that was passed"
         );
 
@@ -717,18 +862,20 @@ mod tests {
             world.components_of_entity.contains_key(&entity_id),
             "components_of_entity should have an entry for the given entity"
         );
-        let entity_components = world.components_of_entity.get(&entity_id).unwrap();
+        let entity_components = world.get_components_of_entity(&entity_id).unwrap();
 
         assert!(
-			entity_components.contains_key(component_name),
+			entity_components.contains(&component_name.to_string()),
 			"components_of_entity for the given entity should have an entry with the component_name"
 		);
 
-        let stored_component = entity_components.get(component_name).unwrap();
+        let stored_component = world
+            .get_component_of_entity(&entity_id, component_name.to_string())
+            .unwrap();
 
         assert_eq!(
             entity_id,
-            stored_component.borrow().get_entity(),
+            stored_component.get_entity(),
             "Added component should belong to the entity that was passed"
         );
     }
@@ -796,9 +943,9 @@ mod tests {
             "set_component_data should have returned Ok"
         );
 
-        let components = world.components_of_entity.get(&entity_id).unwrap();
-
-        let stored_data = components.get(component_name).unwrap().borrow();
+        let stored_data = world
+            .get_component_of_entity(&entity_id, component_name.to_string())
+            .unwrap();
 
         let field_data = stored_data.get_field(field_name.to_string());
         assert_eq!(
@@ -807,12 +954,10 @@ mod tests {
             "Stored value should be the same as the one supplied"
         );
 
-        let stored_data = world
-            .components
-            .get(component_name)
-            .and_then(|c| c.first())
-            .unwrap()
-            .borrow();
+        let components = world
+            .get_component_data(component_name.to_string())
+            .unwrap();
+        let stored_data = components.first().unwrap();
         let field_data = stored_data.get_field(field_name.to_string());
         assert_eq!(
             TestComponentValue::Int(value),
@@ -890,9 +1035,9 @@ mod tests {
         let result = world.set_component_data(&entity_id, component_name.to_string(), &data);
         assert!(result.is_ok());
 
-        let components = world.components_of_entity.get(&entity_id).unwrap();
-
-        let stored_data = components.get(component_name).unwrap().borrow();
+        let stored_data = world
+            .get_component_of_entity(&entity_id, component_name.to_string())
+            .unwrap();
 
         let field_data = stored_data.get_field(field_name.to_string());
         assert_eq!(

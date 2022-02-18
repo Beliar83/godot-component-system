@@ -4,7 +4,7 @@ use cxx::{type_id, ExternType};
 use gcs::component::component_data::ComponentData;
 use std::collections::HashMap;
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct CXXComponentData {
     entity: CXXEntityId,
     fields: HashMap<String, CXXComponentValue>,
