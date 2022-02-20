@@ -75,3 +75,17 @@ impl Display for RegisterEntityError {
         }
     }
 }
+
+pub enum AddComponentError {
+    NameAlreadyAdded,
+}
+
+impl Display for AddComponentError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::NameAlreadyAdded => {
+                write!(f, "Another component with that name already exists")
+            }
+        }
+    }
+}

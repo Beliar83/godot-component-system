@@ -1,7 +1,7 @@
 mod component;
-mod ecs_world;
 mod entity;
 mod godot;
+mod world;
 
 #[cfg(test)]
 mod tests {}

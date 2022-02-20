@@ -2,6 +2,7 @@ use std::string::String;
 
 use cxx::{type_id, ExternType};
 
+use gcs::world::component_storage::GCSComponentStorage;
 use gcs::world::ecs_world::{create_ecs_world, ECSWorld};
 
 use crate::component::component_data::create_component_data;
@@ -115,7 +116,9 @@ type ComponentInfoResult = GCSResult<Box<CXXComponentInfo>>;
 type UnitResult = GCSResult<()>;
 type StringVecResult = GCSResult<Vec<String>>;
 
-pub(crate) struct CXXECSWorld(ECSWorld<CXXComponentDefinition, CXXComponentData, CXXComponentInfo>);
+pub(crate) struct CXXECSWorld(
+    ECSWorld<GCSComponentStorage<CXXComponentInfo, CXXComponentDefinition>, CXXComponentData>,
+);
 
 impl CXXECSWorld {
     fn register_component(
@@ -125,7 +128,7 @@ impl CXXECSWorld {
     ) -> Box<ComponentInfoResult> {
         let result = self
             .0
-            .register_component(name, component_definition.clone());
+            .register_component(name.as_str(), component_definition.clone());
         Box::new(match result {
             Ok(info) => ComponentInfoResult::new_result(Box::new(info)),
             Err(error) => ComponentInfoResult::new_error(error),
@@ -179,9 +182,8 @@ impl CXXECSWorld {
 
 pub(crate) fn create_cxx_ecs_world() -> Box<CXXECSWorld> {
     Box::new(CXXECSWorld(create_ecs_world::<
-        CXXComponentDefinition,
+        GCSComponentStorage<CXXComponentInfo, CXXComponentDefinition>,
         CXXComponentData,
-        CXXComponentInfo,
     >()))
 }
 

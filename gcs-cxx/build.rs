@@ -24,7 +24,7 @@ fn main() {
         "src/godot/variant.rs",
         "src/component/component_value.rs",
         "src/component/component_definition.rs",
-        "src/ecs_world.rs",
+        "src/world/ecs_world.rs",
     ])
     .include(Path::new("include"))
     .include(Path::new(&godot_path))
