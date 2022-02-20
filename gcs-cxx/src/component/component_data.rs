@@ -11,29 +11,29 @@ pub struct CXXComponentData {
 }
 
 impl ComponentData for CXXComponentData {
-    type EntityIdType = CXXEntityId;
-    type ComponentValueType = CXXComponentValue;
+    type EntityId = CXXEntityId;
+    type ComponentValue = CXXComponentValue;
 
-    fn new(entity: CXXEntityId) -> Self {
+    fn new(entity: &Self::EntityId) -> Self {
         Self {
-            entity,
+            entity: entity.clone(),
             fields: HashMap::new(),
         }
     }
 
-    fn get_entity(&self) -> CXXEntityId {
-        self.entity
+    fn get_entity(&self) -> &Self::EntityId {
+        &self.entity
     }
 
-    fn get_field(&self, field: String) -> &Self::ComponentValueType {
+    fn get_field(&self, field: String) -> &Self::ComponentValue {
         if self.fields.contains_key(&field) {
             &self.fields.get(&field).unwrap()
         } else {
-            &Self::ComponentValueType::Nil
+            &Self::ComponentValue::Nil
         }
     }
 
-    fn set_field(&mut self, field: String, value: &Self::ComponentValueType) {
+    fn set_field(&mut self, field: String, value: &Self::ComponentValue) {
         self.fields.insert(field, value.clone());
     }
 }
@@ -49,7 +49,7 @@ impl CXXComponentData {
 }
 
 pub(crate) fn create_component_data(entity: &CXXEntityId) -> Box<CXXComponentData> {
-    Box::new(CXXComponentData::new(*entity))
+    Box::new(CXXComponentData::new(entity))
 }
 
 unsafe impl ExternType for CXXComponentData {

@@ -38,8 +38,8 @@ src_list = ['register_types.cpp',
             'src/component_definition.cpp',
             'src/component_field_definition.cpp',
             'src/component_info.cpp',
-            'src/ecs_world_2d.cpp',
-            'src/ecs_world_base.cpp',
+            'src/gcs_world_2d.cpp',
+            'src/gcs_world_base.cpp',
             'src/entity.cpp',
             ]
 

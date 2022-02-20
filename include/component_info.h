@@ -2,13 +2,13 @@
 #define GODOT_COMPONENT_SYSTEM_COMPONENT_INFO_H
 #include "core/reference.h"
 #include "rust/cxx.h"
-#include "gcs-cxx/src/ecs_world.rs.h"
+#include "gcs-cxx/src/world/gcs_world.rs.h"
 
-class ECSWorldBase;
+class GCSWorldBase;
 
 class ComponentInfo : public Reference {
     GDCLASS(ComponentInfo, Reference)
-    friend class ECSWorldBase;
+    friend class GCSWorldBase;
 private:
     rust::box<gcs::ffi::ComponentInfo> componentInfo;
 

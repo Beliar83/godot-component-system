@@ -24,7 +24,7 @@ fn main() {
         "src/godot/variant.rs",
         "src/component/component_value.rs",
         "src/component/component_definition.rs",
-        "src/world/ecs_world.rs",
+        "src/world/gcs_world.rs",
     ])
     .include(Path::new("include"))
     .include(Path::new(&godot_path))
@@ -38,6 +38,6 @@ fn main() {
     println!("cargo:rerun-if-changed=src/component/component_value.rs");
     println!("cargo:rerun-if-changed=src/component/component_definition.rs");
     println!("cargo:rerun-if-changed=src/component/component_data.rs");
-    println!("cargo:rerun-if-changed=src/ecs_world.rs");
+    println!("cargo:rerun-if-changed=src/gcs_world");
     println!("cargo:rerun-if-changed=src/entity.rs");
 }

@@ -1,21 +1,21 @@
-#ifndef GODOT_COMPONENT_SYSTEM_ECS_WORLD_BASE_H
-#define GODOT_COMPONENT_SYSTEM_ECS_WORLD_BASE_H
+#ifndef GODOT_COMPONENT_SYSTEM_GCS_WORLD_BASE_H
+#define GODOT_COMPONENT_SYSTEM_GCS_WORLD_BASE_H
 
 
 #include <core/script_language.h>
 #include "rust/cxx.h"
-#include "gcs-cxx/src/ecs_world.rs.h"
+#include "gcs-cxx/src/world/gcs_world.rs.h"
 #include "component_info.h"
 #include "component_definition.h"
 #include "entity.h"
 #include "core/object.h"
 
-class ECSWorldBase {
+class GCSWorldBase {
 private:
-    ::rust::Box<::gcs::ffi::ECSWorld> world;
+    ::rust::Box<::gcs::ffi::GCSWorld> world;
 protected:
 public:
-    ECSWorldBase();
+    GCSWorldBase();
     virtual Ref<ComponentInfo> register_component(const StringName &name, const Ref<ComponentDefinition> &componentDefinition) = 0;
     virtual Ref<ComponentInfo> register_script_component(const StringName &name, Ref<Script> resource) = 0;
     virtual Ref<Entity> create_entity() = 0;
@@ -24,4 +24,4 @@ public:
 };
 
 
-#endif //GODOT_COMPONENT_SYSTEM_ECS_WORLD_BASE_H
+#endif //GODOT_COMPONENT_SYSTEM_GCS_WORLD_BASE_H

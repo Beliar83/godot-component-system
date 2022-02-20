@@ -1,38 +1,23 @@
 use std::fmt::{Display, Formatter};
 
 #[derive(PartialEq, Debug)]
-pub enum GetComponentOfEntityError {
+pub enum GetComponentDataOfEntityError {
     EntityNotFound,
     ComponentNotFound,
     ComponentNotInEntity,
 }
 
-impl Display for GetComponentOfEntityError {
+impl Display for GetComponentDataOfEntityError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            GetComponentOfEntityError::EntityNotFound => {
+            GetComponentDataOfEntityError::EntityNotFound => {
                 write!(f, "Entity with that id was not found")
             }
-            GetComponentOfEntityError::ComponentNotFound => {
+            GetComponentDataOfEntityError::ComponentNotFound => {
                 write!(f, "Component with that name was not found")
             }
-            GetComponentOfEntityError::ComponentNotInEntity => {
+            GetComponentDataOfEntityError::ComponentNotInEntity => {
                 write!(f, "The entity does not have that component")
-            }
-        }
-    }
-}
-
-#[derive(PartialEq, Debug)]
-pub enum GetComponentDataError {
-    ComponentNotFound,
-}
-
-impl Display for GetComponentDataError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            GetComponentDataError::ComponentNotFound => {
-                write!(f, "Component with that name was not found")
             }
         }
     }
@@ -42,7 +27,6 @@ impl Display for GetComponentDataError {
 pub enum SetComponentDataError {
     EntityNotFound,
     ComponentNotFound,
-    DataInUse,
 }
 
 impl Display for SetComponentDataError {
@@ -53,9 +37,6 @@ impl Display for SetComponentDataError {
             }
             Self::ComponentNotFound => {
                 write!(f, "Component with that name is already registered")
-            }
-            Self::DataInUse => {
-                write!(f, "The data is already exclusively borrowed")
             }
         }
     }

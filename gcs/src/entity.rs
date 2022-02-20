@@ -1,6 +1,6 @@
 use std::hash::Hash;
 
-pub trait EntityId: Default + PartialEq + Eq + Hash + Copy + Clone {
+pub trait EntityId: Default + PartialEq + Eq + Hash + Clone {
     fn create() -> Self
     where
         Self: Sized;

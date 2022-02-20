@@ -1,13 +1,13 @@
 #ifndef GODOT_COMPONENT_SYSTEM_ENTITY_H
 #define GODOT_COMPONENT_SYSTEM_ENTITY_H
 #include "core/reference.h"
-#include "gcs-cxx/src/ecs_world.rs.h"
+#include "gcs-cxx/src/world/gcs_world.rs.h"
 
-class ECSWorldBase;
+class GCSWorldBase;
 
 class Entity : public Reference {
     GDCLASS(Entity, Reference)
-    friend class ECSWorldBase;
+    friend class GCSWorldBase;
 
 private:
     rust::box<gcs::ffi::EntityId> entityId;

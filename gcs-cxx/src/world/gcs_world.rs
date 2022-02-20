@@ -1,9 +1,10 @@
 use std::string::String;
 
 use cxx::{type_id, ExternType};
+use gcs::world::component_data_storage::{GCSComponentDataStorage, HasEntityComponentResult};
 
 use gcs::world::component_storage::GCSComponentStorage;
-use gcs::world::ecs_world::{create_ecs_world, ECSWorld};
+use gcs::world::gcs_world::GCSWorld;
 
 use crate::component::component_data::create_component_data;
 use crate::component::component_data::CXXComponentData;
@@ -42,6 +43,14 @@ pub mod ffi {
     }
 
     extern "Rust" {
+        type BoolResult;
+
+        fn is_error(&self) -> bool;
+        fn get_result(&self) -> bool;
+        fn get_error(&self) -> String;
+    }
+
+    extern "Rust" {
         #[cxx_name = "ComponentInfo"]
         type CXXComponentInfo;
     }
@@ -72,12 +81,12 @@ pub mod ffi {
     }
 
     extern "Rust" {
-        #[cxx_name = "ECSWorld"]
-        type CXXECSWorld;
+        #[cxx_name = "GCSWorld"]
+        type CXXGCSWorld;
 
         pub(crate) fn create_component_info(hash: u64) -> Box<CXXComponentInfo>;
         fn register_component(
-            self: &mut CXXECSWorld,
+            self: &mut CXXGCSWorld,
             name: String,
             component_definition: &ComponentDefinition,
         ) -> Box<ComponentInfoResult>;
@@ -91,14 +100,18 @@ pub mod ffi {
             data: &CXXComponentData,
         ) -> Box<UnitResult>;
 
-        fn is_component_added_to_entity(&self, entity_id: &CXXEntityId, component: String) -> bool;
+        fn is_component_added_to_entity(
+            &self,
+            entity_id: &CXXEntityId,
+            component: String,
+        ) -> Box<BoolResult>;
 
         fn get_components_of_entity(&self, entity_id: &CXXEntityId) -> Box<StringVecResult>;
 
-        fn create_entity(self: &mut CXXECSWorld) -> Box<CXXEntityId>;
+        fn create_entity(self: &mut CXXGCSWorld) -> Box<CXXEntityId>;
 
-        #[cxx_name = "create_ecs_world"]
-        pub fn create_cxx_ecs_world() -> Box<CXXECSWorld>;
+        #[cxx_name = "create_gcs_world"]
+        pub fn create_cxx_gcs_world() -> Box<CXXGCSWorld>;
     }
 
     extern "C++" {
@@ -115,14 +128,18 @@ pub mod ffi {
 type ComponentInfoResult = GCSResult<Box<CXXComponentInfo>>;
 type UnitResult = GCSResult<()>;
 type StringVecResult = GCSResult<Vec<String>>;
+type BoolResult = GCSResult<bool>;
 
-pub(crate) struct CXXECSWorld(
-    ECSWorld<GCSComponentStorage<CXXComponentInfo, CXXComponentDefinition>, CXXComponentData>,
+pub(crate) struct CXXGCSWorld(
+    GCSWorld<
+        GCSComponentStorage<CXXComponentInfo, CXXComponentDefinition>,
+        GCSComponentDataStorage<CXXComponentData>,
+    >,
 );
 
-impl CXXECSWorld {
+impl CXXGCSWorld {
     fn register_component(
-        self: &mut CXXECSWorld,
+        self: &mut CXXGCSWorld,
         name: String,
         component_definition: &CXXComponentDefinition,
     ) -> Box<ComponentInfoResult> {
@@ -135,7 +152,7 @@ impl CXXECSWorld {
         })
     }
 
-    fn register_entity(self: &mut CXXECSWorld, id: &CXXEntityId) -> Box<UnitResult> {
+    fn register_entity(self: &mut CXXGCSWorld, id: &CXXEntityId) -> Box<UnitResult> {
         let result = self.0.register_entity(id);
         Box::new(match result {
             Ok(_) => UnitResult::new_result(()),
@@ -144,12 +161,14 @@ impl CXXECSWorld {
     }
 
     fn set_component_data(
-        self: &mut CXXECSWorld,
+        self: &mut CXXGCSWorld,
         entity_id: &CXXEntityId,
         component: String,
         data: &CXXComponentData,
     ) -> Box<UnitResult> {
-        let result = self.0.set_component_data(entity_id, component, data);
+        let result = self
+            .0
+            .set_component_data(entity_id, component.as_str(), data);
         Box::new(match result {
             Ok(_) => UnitResult::new_result(()),
             Err(err) => UnitResult::new_error(err.to_string()),
@@ -157,7 +176,7 @@ impl CXXECSWorld {
     }
 
     fn get_components_of_entity(
-        self: &CXXECSWorld,
+        self: &CXXGCSWorld,
         entity_id: &CXXEntityId,
     ) -> Box<StringVecResult> {
         let result = self.0.get_components_of_entity(entity_id);
@@ -168,26 +187,39 @@ impl CXXECSWorld {
     }
 
     fn is_component_added_to_entity(
-        self: &CXXECSWorld,
+        self: &CXXGCSWorld,
         entity_id: &CXXEntityId,
         component: String,
-    ) -> bool {
-        self.0.is_component_added_to_entity(entity_id, component)
+    ) -> Box<BoolResult> {
+        Box::new(
+            match self
+                .0
+                .is_component_added_to_entity(entity_id, component.as_str())
+            {
+                HasEntityComponentResult::EntityNotFound => {
+                    BoolResult::new_error("Entity not found".to_string())
+                }
+                HasEntityComponentResult::EntityDoesNotHaveComponent => {
+                    BoolResult::new_result(false)
+                }
+                HasEntityComponentResult::EntityHasComponent => BoolResult::new_result(true),
+            },
+        )
     }
 
-    fn create_entity(self: &mut CXXECSWorld) -> Box<CXXEntityId> {
-        self.0.create_entity()
+    fn create_entity(self: &mut CXXGCSWorld) -> Box<CXXEntityId> {
+        Box::new(self.0.create_entity().clone())
     }
 }
 
-pub(crate) fn create_cxx_ecs_world() -> Box<CXXECSWorld> {
-    Box::new(CXXECSWorld(create_ecs_world::<
+pub(crate) fn create_cxx_gcs_world() -> Box<CXXGCSWorld> {
+    Box::new(CXXGCSWorld(GCSWorld::<
         GCSComponentStorage<CXXComponentInfo, CXXComponentDefinition>,
-        CXXComponentData,
-    >()))
+        GCSComponentDataStorage<CXXComponentData>,
+    >::default()))
 }
 
-unsafe impl ExternType for CXXECSWorld {
-    type Id = type_id!("gcs::ffi::ECSWorld");
+unsafe impl ExternType for CXXGCSWorld {
+    type Id = type_id!("gcs::ffi::GCSWorld");
     type Kind = cxx::kind::Trivial;
 }

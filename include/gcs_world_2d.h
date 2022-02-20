@@ -4,15 +4,15 @@
 #include "scene/2d/node_2d.h"
 #include "scene/3d/spatial.h"
 #include "rust/cxx.h"
-#include "gcs-cxx/src/ecs_world.rs.h"
+#include "gcs-cxx/src/world/gcs_world.rs.h"
 #include "component_info.h"
 #include "component_definition.h"
 #include "entity.h"
 #include "gcs-cxx/include/godot/string.h" // NOLINT(modernize-deprecated-headers)
-#include "ecs_world_base.h"
+#include "gcs_world_base.h"
 
-class ECSWorld2D : public Node2D, ECSWorldBase {
-GDCLASS(ECSWorld2D, Node2D);
+class GCSWorld2D : public Node2D, GCSWorldBase {
+GDCLASS(GCSWorld2D, Node2D);
 protected:
     static void _bind_methods();
 
