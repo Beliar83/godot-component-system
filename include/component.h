@@ -3,7 +3,7 @@
 #include <vector>
 #include "core/reference.h"
 #include "rust/cxx.h"
-#include "gcs-cxx/include/godot/variant.h"
+#include "godot-cxx/variant.h"
 
 class GodotComponent : public Reference {
     GDCLASS(GodotComponent, Reference);

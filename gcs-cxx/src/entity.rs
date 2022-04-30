@@ -3,12 +3,12 @@ use uuid::Uuid;
 
 use gcs::entity::EntityId;
 
-use crate::godot::error::GCSResult;
+use godot_cxx::godot_result;
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, Default)]
 pub struct CXXEntityId(uuid::Uuid);
 
-pub(crate) type EntityIdResult = GCSResult<Box<CXXEntityId>>;
+godot_result!(Box<CXXEntityId>, EntityIdResult);
 
 impl EntityId for CXXEntityId {
     fn create() -> Self

@@ -1,7 +1,7 @@
 use crate::component::component_definition::ffi::CXXComponentFieldDefinition;
 use cxx::{type_id, ExternType};
 use gcs::component::component_definition::{ComponentDefinition, ComponentFieldDefinition};
-use gcs::variant::VariantType;
+use godot_cxx::common::variant_type::VariantType;
 
 #[cxx::bridge(namespace = gcs::ffi)]
 pub mod ffi {
@@ -13,7 +13,7 @@ pub mod ffi {
     }
 
     extern "Rust" {
-        include!("gcs-cxx/src/godot/variant.rs.h");
+        include!("godot-cxx/variant.h");
         #[cxx_name = "ComponentDefinition"]
         type CXXComponentDefinition;
 
@@ -29,7 +29,8 @@ pub mod ffi {
     }
 
     extern "C++" {
-        type VariantType = crate::godot::variant::CXXVariantType;
+        #[namespace = "godot_cxx::ffi"]
+        type VariantType = godot_cxx::variant_type::CXXVariantType;
     }
 }
 

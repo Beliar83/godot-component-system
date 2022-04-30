@@ -8,7 +8,7 @@
 #include "component_info.h"
 #include "component_definition.h"
 #include "entity.h"
-#include "gcs-cxx/include/godot/string.h" // NOLINT(modernize-deprecated-headers)
+#include "godot-cxx/string.h" // NOLINT(modernize-deprecated-headers)
 #include "gcs_world_base.h"
 
 class GCSWorld2D : public Node2D, GCSWorldBase {

@@ -8,3 +8,4 @@ edition = "2021"
 
 [dependencies]
 uuid = {version = "0.8", features=["serde", "v4"]}
+godot-cxx-common = { registry = "ktra", version="0.1.0"}

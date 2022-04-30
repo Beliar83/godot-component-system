@@ -9,8 +9,10 @@ crate-type = ["staticlib"]
 
 [dependencies]
 gcs = {path = "../gcs"}
-cxx = "1.0"
+godot-cxx = { registry = "ktra", version="0.1.2"}
+cxx = "1.0.66"
 uuid = {version = "0.8", features=["serde", "v4", "wasm-bindgen"]}
 
 [build-dependencies]
-cxx-build = "1.0"
+cxx-build = "1.0.66"
+godot-cxx-build = { registry = "ktra", version="0.1.0"}

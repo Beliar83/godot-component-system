@@ -160,7 +160,7 @@ mod tests {
         TestComponentData, TestComponentDefinition, TestComponentFieldDefinition,
         TestComponentInfo, TestComponentValue, TestEntityId,
     };
-    use crate::variant::VariantType;
+    use crate::variant_type::VariantType;
     use crate::world::component_data_storage::{ComponentDataStorage, GCSComponentDataStorage};
     use crate::world::component_storage::{ComponentStorage, GCSComponentStorage};
     use crate::world::errors::GetComponentDataOfEntityError;

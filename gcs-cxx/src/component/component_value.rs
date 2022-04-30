@@ -1,12 +1,11 @@
-use crate::component::component_value::ffi::{
-    empty_variant, variant_from_bool, variant_from_f64, variant_from_i64, variant_from_string,
-};
-use crate::godot::variant::ffi::{
-    variant_as_bool, variant_as_f64, variant_as_i64, variant_as_string, CXXVariantType, Variant,
-};
+use crate::component::component_value::ffi::Variant;
 use cxx::{type_id, ExternType};
 use gcs::component::component_value::ComponentValue;
-use gcs::variant::VariantType;
+use godot_cxx::common::variant_type::VariantType;
+use godot_cxx::variant::ffi::{
+    cxx_variant_from_bool, cxx_variant_from_f64, cxx_variant_from_i64, cxx_variant_from_string,
+    empty_variant, variant_as_bool, variant_as_f64, variant_as_i64, variant_as_string,
+};
 
 #[cxx::bridge(namespace = gcs::ffi)]
 pub mod ffi {
@@ -18,16 +17,9 @@ pub mod ffi {
     }
 
     unsafe extern "C++" {
-        include!("gcs-cxx/include/godot/variant.h");
-        include!("rust/cxx.h");
-        pub type Variant = crate::godot::variant::ffi::Variant;
-
-        pub(crate) fn empty_variant() -> &'static Variant;
-        pub(crate) fn variant_from_i64(value: i64) -> &'static Variant;
-        pub(crate) fn variant_from_string(value: String) -> &'static Variant;
-        pub(crate) fn variant_from_bool(value: bool) -> &'static Variant;
-        pub(crate) fn variant_from_f64(value: f64) -> &'static Variant;
-
+        include!("godot-cxx/variant.h");
+        #[namespace = "godot_cxx::ffi"]
+        pub type Variant = godot_cxx::variant::ffi::CXXVariant;
     }
 }
 
@@ -152,17 +144,17 @@ unsafe impl ExternType for CXXComponentValue {
 fn variant_from_component_value(value: &CXXComponentValue) -> &'static Variant {
     match value.clone() {
         CXXComponentValue::Nil => empty_variant(),
-        CXXComponentValue::Int(value) => variant_from_i64(value),
-        CXXComponentValue::String(value) => variant_from_string(value.clone()),
-        CXXComponentValue::Bool(value) => variant_from_bool(value),
-        CXXComponentValue::Real(value) => variant_from_f64(value),
+        CXXComponentValue::Int(value) => cxx_variant_from_i64(value),
+        CXXComponentValue::String(value) => cxx_variant_from_string(value.clone()),
+        CXXComponentValue::Bool(value) => cxx_variant_from_bool(value),
+        CXXComponentValue::Real(value) => cxx_variant_from_f64(value),
     }
 }
 
 fn component_value_from_variant(value: &Variant) -> Box<CXXComponentValue> {
-    let variant_type: CXXVariantType = value.get_type();
+    let variant_type: VariantType = value.get_type().0;
 
-    match variant_type.0 {
+    match variant_type {
         VariantType::Nil => Box::new(CXXComponentValue::Nil),
         VariantType::Bool => Box::new(CXXComponentValue::Bool(variant_as_bool(value))),
         VariantType::Int => Box::new(CXXComponentValue::Int(variant_as_i64(value))),

@@ -5,7 +5,7 @@ use gcs::variant::VariantType;
 #[cxx::bridge(namespace = gcs::ffi)]
 pub mod ffi {
     unsafe extern "C++" {
-        include!("gcs-cxx/include/godot/variant.h");
+        include!("godot-cxx/variant.h");
         include!("rust/cxx.h");
         pub type Variant;
         #[cxx_name = "VariantType"]

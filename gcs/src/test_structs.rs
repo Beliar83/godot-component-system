@@ -3,7 +3,7 @@ use crate::component::component_definition::{ComponentDefinition, ComponentField
 use crate::component::component_info::ComponentInfo;
 use crate::component::component_value::ComponentValue;
 use crate::entity::EntityId;
-use crate::variant::VariantType;
+use crate::variant_type::VariantType;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};

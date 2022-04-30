@@ -15,7 +15,7 @@ use crate::entity::create_entity;
 use crate::entity::entity_id_from_string;
 use crate::entity::CXXEntityId;
 use crate::entity::EntityIdResult;
-use crate::godot::error::GCSResult;
+use godot_cxx::godot_result;
 
 #[cxx::bridge(namespace = gcs::ffi)]
 pub mod ffi {
@@ -116,7 +116,7 @@ pub mod ffi {
 
     extern "C++" {
         include!("rust/cxx.h");
-        include!("gcs-cxx/include/godot/variant.h");
+        include!("godot-cxx/variant.h");
         include!("gcs-cxx/src/component/component_definition.rs.h");
         include!("gcs-cxx/src/component/component_value.rs.h");
 
@@ -125,10 +125,10 @@ pub mod ffi {
     }
 }
 
-type ComponentInfoResult = GCSResult<Box<CXXComponentInfo>>;
-type UnitResult = GCSResult<()>;
-type StringVecResult = GCSResult<Vec<String>>;
-type BoolResult = GCSResult<bool>;
+godot_result!(Box<CXXComponentInfo>, ComponentInfoResult);
+godot_result!((), UnitResult);
+godot_result!(Vec<String>, StringVecResult);
+godot_result!(bool, BoolResult);
 
 pub(crate) struct CXXGCSWorld(
     GCSWorld<

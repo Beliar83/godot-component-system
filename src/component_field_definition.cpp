@@ -1,5 +1,5 @@
 #include "component_field_definition.h"
-#include "gcs-cxx/include/godot/string.h" // NOLINT(modernize-deprecated-headers)
+#include "godot-cxx/string.h" // NOLINT(modernize-deprecated-headers)
 
 StringName ComponentFieldDefinition::get_name() const {
     return string_name_from_rust_string(componentFieldDefinition.name);

@@ -10,3 +10,6 @@ crate-type = ["staticlib"]
 [dependencies]
 gcs = { path = "gcs"}
 gcs-cxx = { path = "gcs-cxx"}
+
+[build-dependencies]
+godot-cxx-build = { registry = "ktra", version="0.1.0"}

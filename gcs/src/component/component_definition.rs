@@ -1,4 +1,4 @@
-use crate::variant::VariantType;
+use godot_cxx_common::variant_type::VariantType;
 use std::hash::Hash;
 
 pub trait ComponentDefinition: Default + Hash + Clone {

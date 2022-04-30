@@ -1,5 +1,5 @@
 #include "gcs_world_base.h"
-#include "gcs-cxx/include/godot/string.h" // NOLINT(modernize-deprecated-headers)
+#include "godot-cxx/string.h" // NOLINT(modernize-deprecated-headers)
 
 GCSWorldBase::GCSWorldBase() : world(gcs::ffi::create_gcs_world()) {
 
